@@ -34,3 +34,13 @@ KNOWN_REPO_MAPPING = {
     #"viperproject/silicon": "fpoli/viper-silicon",
     #"viperproject/viperserver": "fpoli/viper-viperserver",
 }
+
+# Mapping of known Bitbucket repos to their number of issues.
+# This information is used to correctly account for the offset
+# of PRs' IDs
+KNOWN_ISSUES_COUNT_MAPPING = {
+    "viperproject/silver": 300,
+    #"viperproject/carbon": ,
+    #"viperproject/silicon": ,
+    #"viperproject/viperserver": ,
+}

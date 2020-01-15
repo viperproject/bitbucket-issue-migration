@@ -26,12 +26,35 @@ def replace_links_to_issues(body, args):
     return new_body
 
 
+def replace_links_to_prs(body, args):
+    # Bitbucket uses separate numbering for issues and pull requests
+    # However, GitHub uses the same numbering.
+    # Assuming that pull requests get imported after issues, the IDs of pull requests need to be incremented by the
+    # number of issues (in the corresponding repo)
+    new_body = body
+    for brepo in config.KNOWN_REPO_MAPPING:
+        grepo = config.KNOWN_REPO_MAPPING[brepo]
+        if brepo not in config.KNOWN_ISSUES_COUNT_MAPPING:
+            continue
+        issues_count = config.KNOWN_ISSUES_COUNT_MAPPING[brepo]
+        # parenthesis and square brackets are not considered part of the url, because they could belong to outer markdown
+        # "{{}}" escapes the curly brackets and results in "{}" after calling format on it.
+        pattern = r'https://bitbucket.org/{repo}/pull-requests*/(\d+)[^\s()\[\]{{}}]*'.format(repo=brepo)
+        # the distinction whether the PR is in the current repo is optional
+        pr_replace = lambda matchobj: r'{repo}#{gpr_number}'.format(
+            repo=grepo if grepo != args.repository else "", gpr_number=int(matchobj.group(1)) + issues_count)
+        new_body = re.sub(pattern, pr_replace, new_body)
+    return new_body
+
+
 def update_issue_body(body, args):
-    return replace_links_to_issues(body, args)
+    tmp = replace_links_to_issues(body, args)
+    return replace_links_to_prs(tmp, args)
 
 
 def update_issue_comment_body(body, args):
-    return replace_links_to_issues(body, args)
+    tmp = replace_links_to_issues(body, args)
+    return replace_links_to_prs(tmp, args)
 
 
 def print_diff(title, old, new):
