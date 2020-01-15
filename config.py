@@ -25,3 +25,12 @@ OPEN_ISSUE_STATES = {
     "new",
     "on hold",
 }
+
+# Mapping of known Bitbucket to their corresponding GitHub repo
+# This information is used to convert links
+KNOWN_REPO_MAPPING = {
+    "viperproject/silver": "fpoli/viper-silver",
+    #"viperproject/carbon": "fpoli/viper-carbon",
+    #"viperproject/silicon": "fpoli/viper-silicon",
+    #"viperproject/viperserver": "fpoli/viper-viperserver",
+}
