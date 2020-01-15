@@ -136,9 +136,7 @@ def bitbucket_to_github(bexport, repo):
     print("Number of github issues in '{}' before the : {}".format(repo.full_name, old_gissues.totalCount))
     print("Number of bitbucket issues in the export:", len(bexport.bissues))
 
-    if len(bexport.bissues) > old_gissues.totalCount:
-        raise Exception("The Github repository has too many issues")
-    elif len(bexport.bissues) < old_gissues.totalCount:
+    if len(bexport.bissues) < old_gissues.totalCount:
         print("Warning: there are too many issues on Github")
 
     for bissue in bexport.bissues:
