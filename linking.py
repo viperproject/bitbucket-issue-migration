@@ -4,6 +4,7 @@ import re
 from github import Github
 from github.GithubException import UnknownObjectException
 import argparse
+import difflib
 import config
 
 
@@ -33,20 +34,35 @@ def update_issue_comment_body(body, args):
     return replace_links_to_issues(body, args)
 
 
+def print_diff(title, old, new):
+    print('#' * 50)
+    print(title)
+    diff = difflib.unified_diff(old.splitlines(), new.splitlines())
+    for line in diff:
+        print(line)
+    print('#' * 50)
+
+
 def update_links_in_comment(comment, args):
     old_body = comment.body
     body = update_issue_comment_body(old_body, args)
     if old_body != body:
-        print("issue comment {} is different".format(comment.id))
-        comment.edit(body)
+        if args.dry_run:
+            print_diff("issue comment {} is different:".format(comment.id),
+                       old_body, body)
+        else:
+            comment.edit(body)
 
 
 def update_links_in_issue(issue, args):
     old_body = issue.body
     body = update_issue_body(old_body, args)
     if old_body != body:
-        print("issue {} is different".format(issue.number))
-        issue.edit(body=body)
+        if args.dry_run:
+            print_diff("issue {} is different".format(issue.number),
+                       old_body, body)
+        else:
+            issue.edit(body=body)
     comments = issue.get_comments()
     for comment in comments:
         update_links_in_comment(comment, args)
@@ -55,8 +71,7 @@ def update_links_in_issue(issue, args):
 def update_links_in_issues(repo, args):
     issues = repo.get_issues(state="all")
     for issue in issues:
-        if issue.number == 80:
-            update_links_in_issue(issue, args)
+        update_links_in_issue(issue, args)
 
 
 def update_links(repo, args):
@@ -78,6 +93,13 @@ def create_parser():
         "-r", "--repository",
         help="Full name or id of the Github repository",
         required=True
+    )
+    parser.add_argument(
+        "-n", "--dry-run", action="store_true",
+        help=(
+            "Simulate actions of this script by printing actions "
+            "instead of performing them on GitHub"
+        )
     )
     return parser
 
