@@ -8,53 +8,65 @@ import difflib
 import config
 
 
+ISSUE_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/issues*/(\d+)[^\s()\[\]{{}}]*'
+                           .format(repos="|".join(config.KNOWN_REPO_MAPPING)))
 def replace_links_to_issues(body, args):
     # replace links to other issues by #<id> (or <repo>#<id> if it the issue is located in a different repo)
-    new_body = body
-    for brepo in config.KNOWN_REPO_MAPPING:
+    def replace_issue_link(match):
+        brepo = match.group(1)
+        issue_nr = match.group(2)
+        if brepo not in config.KNOWN_REPO_MAPPING:
+            # leave link unchanged:
+            return match.group(0)
         grepo = config.KNOWN_REPO_MAPPING[brepo]
-        # parenthesis and square brackets are not considered part of the url, because they could belong to outer markdown
-        # "{{}}" escapes the curly brackets and results in "{}" after calling format on it.
-        pattern = r'https://bitbucket.org/{repo}/issues*/(\d+)[^\s()\[\]{{}}]*'.format(repo=brepo)
-        # the following distinction is optional, because the else method works in the same repo as well
-        if grepo == args.repository:
-            # it's a link to an issue in the current (i.e. args.repository) repo
-            new_body = re.sub(pattern, r'#\1', new_body)
-        else:
-            # it's a link to an issue in another repo that is known as well
-            new_body = re.sub(pattern, r'{repo}#\1'.format(repo=grepo), new_body)
-    return new_body
+        return r'{repo}#{issue_nr}'.format(
+            repo=grepo if grepo != args.repository else "", issue_nr=issue_nr)
+    return ISSUE_LINK_RE.sub(replace_issue_link, body)
 
 
+PR_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/pull-requests*/(\d+)[^\s()\[\]{{}}]*'
+                           .format(repos="|".join(config.KNOWN_REPO_MAPPING)))
 def replace_links_to_prs(body, args):
     # Bitbucket uses separate numbering for issues and pull requests
     # However, GitHub uses the same numbering.
     # Assuming that pull requests get imported after issues, the IDs of pull requests need to be incremented by the
     # number of issues (in the corresponding repo)
-    new_body = body
-    for brepo in config.KNOWN_REPO_MAPPING:
+    def replace_pr_link(match):
+        brepo = match.group(1)
+        bpr_nr = int(match.group(2))
+        if brepo not in config.KNOWN_REPO_MAPPING or brepo not in config.KNOWN_ISSUES_COUNT_MAPPING:
+            # leave link unchanged:
+            return match.group(0)
         grepo = config.KNOWN_REPO_MAPPING[brepo]
-        if brepo not in config.KNOWN_ISSUES_COUNT_MAPPING:
-            continue
         issues_count = config.KNOWN_ISSUES_COUNT_MAPPING[brepo]
-        # parenthesis and square brackets are not considered part of the url, because they could belong to outer markdown
-        # "{{}}" escapes the curly brackets and results in "{}" after calling format on it.
-        pattern = r'https://bitbucket.org/{repo}/pull-requests*/(\d+)[^\s()\[\]{{}}]*'.format(repo=brepo)
-        # the distinction whether the PR is in the current repo is optional
-        pr_replace = lambda matchobj: r'{repo}#{gpr_number}'.format(
-            repo=grepo if grepo != args.repository else "", gpr_number=int(matchobj.group(1)) + issues_count)
-        new_body = re.sub(pattern, pr_replace, new_body)
-    return new_body
+        gpr_number = bpr_nr + issues_count
+        return r'{repo}#{gpr_number}'.format(
+            repo=grepo if grepo != args.repository else "", gpr_number=gpr_number)
+    return PR_LINK_RE.sub(replace_pr_link, body)
+
+
+MENTION_RE = re.compile(r'(?:^|(?<=[^\w]))@([a-zA-Z0-9_-]+)\b')
+def replace_links_to_users(body, args):
+    # replace @mentions with users specified in config:
+    def replace_user(match):
+        buser = match.group(1)
+        if buser not in config.USER_MAPPING:
+            # leave username unchanged:
+            return match.group(0)
+        return '@' + config.USER_MAPPING[buser]
+    return MENTION_RE.sub(replace_user, body)
 
 
 def update_issue_body(body, args):
     tmp = replace_links_to_issues(body, args)
-    return replace_links_to_prs(tmp, args)
+    tmp = replace_links_to_prs(tmp, args)
+    return replace_links_to_users(tmp, args)
 
 
 def update_issue_comment_body(body, args):
     tmp = replace_links_to_issues(body, args)
-    return replace_links_to_prs(tmp, args)
+    tmp = replace_links_to_prs(tmp, args)
+    return replace_links_to_users(tmp, args)
 
 
 def print_diff(title, old, new):
