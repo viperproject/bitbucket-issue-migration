@@ -8,6 +8,7 @@ from github import InputFileContent
 import config
 from migrate.bitbucket import BitbucketExport
 from migrate.github import GithubImport
+from linking import replace_links_to_users
 
 
 def map_bstatus_to_gstate(bissue):
@@ -48,7 +49,7 @@ def time_string_to_date_string(timestring):
     return datetime.strftime("%Y-%m-%d %H:%M")
 
 
-def construct_gcomment_content(bcomment):
+def construct_gcomment_body(bcomment):
     sb = []
     content = bcomment["content"]
     comment_created_on = time_string_to_date_string(timestring=bcomment["created_on"])
@@ -114,9 +115,12 @@ def update_gissue(gimport, gissue, bissue, bexport):
     bcomments = bexport.issue_comments[issue_id]
 
     # Update issue
+    issue_body = replace_links_to_users(
+        construct_gissue_body(gimport, bissue, battachments)
+    )
     gissue.edit(
         title=bissue["title"],
-        body=construct_gissue_body(gimport, bissue, battachments),
+        body=issue_body,
         labels=construct_gissue_labels(bissue),
         state=map_bstatus_to_gstate(bissue),
         assignees=map_bassignee_to_gassignees(bissue)
@@ -134,7 +138,7 @@ def update_gissue(gimport, gissue, bissue, bexport):
     # Create missing comments and update them
     for comment_num, bcomment in enumerate(bcomments):
         print("Processing comment {}/{} of issue #{}...".format(comment_num+1, num_comments, issue_id))
-        comment_body = construct_gcomment_content(bcomment)
+        comment_body = replace_links_to_users(construct_gcomment_body(bcomment))
         if comment_num < len(gcomments):
             gcomments[comment_num].edit(comment_body)
         else:

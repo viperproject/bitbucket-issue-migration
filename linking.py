@@ -46,14 +46,15 @@ def replace_links_to_prs(body, args):
 
 
 MENTION_RE = re.compile(r'(?:^|(?<=[^\w]))@([a-zA-Z0-9_-]+)\b')
-def replace_links_to_users(body, args):
+def replace_links_to_users(body, args=None):
     # replace @mentions with users specified in config:
+    # TODO: remove the 'disable-' before doing the real migration
     def replace_user(match):
         buser = match.group(1)
         if buser not in config.USER_MAPPING:
             # leave username unchanged:
-            return match.group(0)
-        return '@' + config.USER_MAPPING[buser]
+            return '@' + 'disable-' + buser
+        return '@' + 'disable-' + config.USER_MAPPING[buser]
     return MENTION_RE.sub(replace_user, body)
 
 
@@ -153,5 +154,5 @@ def main():
 
     update_links(repo, args)
 
-
-main()
+if __name__ == "__main__":
+    main()
