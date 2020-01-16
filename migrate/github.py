@@ -11,8 +11,14 @@ class GithubImport:
         except UnknownObjectException:
             raise Exception("Failed to get the repository '{}'".format(args.repository))
 
+    def get_repo_full_name(self):
+        return self.repo.full_name
+
     def get_remaining_rate_limit(self):
         return self.github.rate_limiting[0]
+
+    def get_issue_count(self):
+        return self.repo.get_issues(state="all").totalCount
 
     def get_gist_by_description(self, description):
         return next(

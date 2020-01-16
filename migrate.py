@@ -235,52 +235,47 @@ def update_gissue_for_pull_request(gimport, bexport, gissue, bpull_request):
 
 
 def bitbucket_to_github(bexport, gimport):
-    repo = gimport.repo
-    user = gimport.github.get_user()
+    repo_full_name = gimport.get_repo_full_name()
     gissues = {}
 
-    # Migrate issues
-    print("Migrate issues...")
+    # Initial checks
+    assert repo_full_name in KNOWN_ISSUES_COUNT_MAPPING
+
+    # Retrieve data
     bissues = bexport.get_issues()
-    old_gissues_num = repo.get_issues(state="all").totalCount
-    print("Number of github issues in '{}' before the migration: {}".format(repo.full_name, old_gissues_num))
-    print("Number of bitbucket issues in the export:", len(bissues))
+    bpull_requests = bexport.get_pull_requests()
+    pull_requests_id_offset = KNOWN_ISSUES_COUNT_MAPPING[repo_full_name]
+    print("Number of bitbucket issues:", len(bissues))
+    print("Number of bitbucket pull requests:", len(bpull_requests))
+    print("Number of github issues before the migration: {}".format(gimport.get_issue_count()))
 
-    if len(bissues) < old_gissues_num:
-        print("Warning: there are too many issues on Github")
-
-    for bissue in bissues:
-        issue_id = bissue["id"]
-        print("Pre-processing issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
+    # Prepare issues
+    print("Prepare issues...")
+    for issue_id in range(len(bissues) + len(bpull_requests)):
+        print("Preparing issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
         gissue = gimport.get_or_create_gissue(issue_id)
         gissues[issue_id] = gissue
 
+    # Migrate issues
+    print("Migrate issues...")
     for bissue in bissues:
         issue_id = bissue["id"]
-        print("Processing issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
+        print("Migrating issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
         gissue = gissues[issue_id]
         update_gissue(gimport=gimport, bexport=bexport, gissue=gissue, bissue=bissue)
 
     # Migrate pull requests
     print("Migrate pull requests...")
-    assert repo.full_name in KNOWN_ISSUES_COUNT_MAPPING
-    assert KNOWN_ISSUES_COUNT_MAPPING[repo.full_name] == repo.get_issues(state="all").totalCount
-    pull_requests_id_offset = KNOWN_ISSUES_COUNT_MAPPING[repo.full_name]
-    bpull_requests = bexport.get_pull_requests()
-
     for pull_request in bpull_requests:
         pull_request_id = pull_request["id"]
         issue_id = pull_request_id + pull_requests_id_offset
-        print("Pre-processing pull-request #{} (issue #{})... [rate limiting: {}]".format(pull_request_id, issue_id, gimport.get_remaining_rate_limit()))
-        gissue = gimport.get_or_create_gissue(issue_id)
-        gissues[issue_id] = gissue
-
-    for pull_request in bpull_requests:
-        pull_request_id = pull_request["id"]
-        issue_id = pull_request_id + pull_requests_id_offset
-        print("Processing pull-request #{}... [rate limiting: {}]".format(pull_request_id, gimport.get_remaining_rate_limit()))
+        print("Migrating pull-request #{}... [rate limiting: {}]".format(pull_request_id, gimport.get_remaining_rate_limit()))
         gissues[issue_id] = gissue
         update_gissue_for_pull_request(gimport=gimport, bexport=bexport, gissue=gissue, bpull_request=pull_request)
+
+    # Final checks
+    if len(bissues) + len(bpull_requests) != repo.get_issues(state="all").totalCount:
+        print("Warning: the number of Github issues seems to be wrong")
 
 
 def create_parser():
