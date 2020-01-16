@@ -33,7 +33,7 @@ class BitbucketExport:
         self.repo_url = "https://api.bitbucket.org/2.0/repositories/" + repository_name
 
     def get_issues(self):
-        print("Get all issues from '{}' on Bitbucket...".format(self.repository_name))
+        print("Get all issues from Bitbucket's {}...".format(self.repository_name))
         issues = list(get_paginated_json(self.repo_url + "/issues"))
         issues.sort(key=lambda x: x["id"])
         return issues
@@ -49,12 +49,11 @@ class BitbucketExport:
         return attachments
 
     def get_issue_attachment_content(self, issue_id, attachment_name):
-        print("get_issue_attachment_content({}, {})".format(issue_id, attachment_name))
         data = get_request_content(self.repo_url + "/issues/" + str(issue_id) + "/attachments/" + attachment_name)
         return data
 
     def get_pull_requests(self):
-        print("Get all pull requests from '{}' on Bitbucket...".format(self.repository_name))
+        print("Get all pull requests from Bitbucket's {}...".format(self.repository_name))
         issues = list(get_paginated_json(self.repo_url + "/pullrequests"))
         issues.sort(key=lambda x: x["id"])
         return issues

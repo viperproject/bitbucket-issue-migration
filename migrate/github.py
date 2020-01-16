@@ -35,10 +35,12 @@ class GithubImport:
     def get_issue_attachments_gist(self, issue_id):
         return self.issue_attachments_gist[issue_id]
 
-    def get_or_create_gissue(self, issue_id):
+    def get_or_create_gissue(self, issue_id, title=None):
         try:
             gissue = self.repo.get_issue(issue_id)
         except UnknownObjectException:
-            gissue = self.repo.create_issue("[issue #{}]".format(issue_id))
+            gissue = self.repo.create_issue(
+                title if title is not None else "[issue #{}]".format(issue_id)
+            )
         assert gissue.number == issue_id
         return gissue

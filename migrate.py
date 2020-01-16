@@ -152,6 +152,10 @@ def construct_gissue_labels(bissue):
     return list(glabels)
 
 
+def construct_gissue_title_for_pull_request(bpull_request):
+    return "[PR] " + bpull_request["title"]
+
+
 def update_gissue_comments(gissue, bcomments):
     issue_id = gissue.number
     num_comments = len(bcomments)
@@ -213,7 +217,7 @@ def update_gissue(bissue, gissue, bexport, gimport):
 
 
 def update_gissue_for_pull_request(gimport, bexport, gissue, bpull_request):
-    pull_requests_id_offset = KNOWN_ISSUES_COUNT_MAPPING[gimport.repo.full_name]
+    pull_requests_id_offset = config.KNOWN_ISSUES_COUNT_MAPPING[gimport.repo.full_name]
     assert gissue.number == bpull_request["id"] + pull_requests_id_offset
     pull_request_id = bpull_request["id"]
 
@@ -222,7 +226,7 @@ def update_gissue_for_pull_request(gimport, bexport, gissue, bpull_request):
         construct_gpull_request_body(gimport, bissue, battachments)
     )
     gissue.edit(
-        title=bpull_request["title"],
+        title=construct_gissue_title_for_pull_request(bpull_request),
         body=issue_body,
         labels=construct_gissue_labels(bissue),
         state=map_bstate_to_gstate(bissue),
@@ -234,35 +238,42 @@ def update_gissue_for_pull_request(gimport, bexport, gissue, bpull_request):
     update_gissue_comments(gissue, bcomments)
 
 
-def bitbucket_to_github(bexport, gimport):
+def bitbucket_to_github(bexport, gimport, args):
     repo_full_name = gimport.get_repo_full_name()
     gissues = {}
-
-    # Initial checks
-    assert repo_full_name in KNOWN_ISSUES_COUNT_MAPPING
 
     # Retrieve data
     bissues = bexport.get_issues()
     bpull_requests = bexport.get_pull_requests()
-    pull_requests_id_offset = KNOWN_ISSUES_COUNT_MAPPING[repo_full_name]
     print("Number of bitbucket issues:", len(bissues))
     print("Number of bitbucket pull requests:", len(bpull_requests))
     print("Number of github issues before the migration: {}".format(gimport.get_issue_count()))
+    assert repo_full_name in config.KNOWN_ISSUES_COUNT_MAPPING
+    assert config.KNOWN_ISSUES_COUNT_MAPPING[repo_full_name] == len(bissues)
+    pull_requests_id_offset = config.KNOWN_ISSUES_COUNT_MAPPING[repo_full_name]
 
     # Prepare issues
     print("Prepare issues...")
-    for issue_id in range(len(bissues) + len(bpull_requests)):
+    for issue_id in range(1, len(bissues) + 1):
         print("Preparing issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
-        gissue = gimport.get_or_create_gissue(issue_id)
+        gissue = gimport.get_or_create_gissue(issue_id, bissue[issue_id]["title"])
+        gissues[issue_id] = gissue
+
+    for issue_id in range(len(bissues) + 1, len(bissues) + len(bpull_requests) + 1):
+        print("Preparing issue #{} for pull request... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
+        bpull_request = bpull_requests[issue_id - pull_requests_id_offset]
+        title = construct_gissue_title_for_pull_request(bpull_request)
+        gissue = gimport.get_or_create_gissue(issue_id, title)
         gissues[issue_id] = gissue
 
     # Migrate issues
-    print("Migrate issues...")
-    for bissue in bissues:
-        issue_id = bissue["id"]
-        print("Migrating issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
-        gissue = gissues[issue_id]
-        update_gissue(gimport=gimport, bexport=bexport, gissue=gissue, bissue=bissue)
+    if not args.skip_issues:
+        print("Migrate issues...")
+        for bissue in bissues:
+            issue_id = bissue["id"]
+            print("Migrating issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
+            gissue = gissues[issue_id]
+            update_gissue(gimport=gimport, bexport=bexport, gissue=gissue, bissue=bissue)
 
     # Migrate pull requests
     print("Migrate pull requests...")
@@ -298,6 +309,11 @@ def create_parser():
         help="Full name of the Github repository (e.g. viperproject/silver)",
         required=True
     )
+    parser.add_argument(
+        "--skip-issues",
+        help="Skip the migration of issues",
+        action='store_true'
+    )
     return parser
 
 
@@ -306,7 +322,7 @@ def main():
     args = parser.parse_args()
     bexport = BitbucketExport(args.bitbucket_repository)
     gimport = GithubImport(args.github_access_token, args.github_repository)
-    bitbucket_to_github(bexport=bexport, gimport=gimport)
+    bitbucket_to_github(bexport=bexport, gimport=gimport, args=args)
 
 
 if __name__ == "__main__":
