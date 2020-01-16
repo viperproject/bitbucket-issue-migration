@@ -1,7 +1,3 @@
-
-# Change this to your own target repo.
-TARGET_REPO = 'fpoli/viper-silver'
-
 # Github only accepts assignees from valid users. We map those users from bitbucket.
 USER_MAPPING = {
 }

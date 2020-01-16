@@ -1,5 +1,4 @@
 import json
-from warnings import warn
 from zipfile import ZipFile
 
 
@@ -28,7 +27,7 @@ def load_issues(export_json):
             raise ValueError("The Bitbucket export does not contain some issues")
 
     if len(issues) == 0:
-        warn("Could not find any issue in the Bitbucket export")
+        print("Warning: could not find any issue in the Bitbucket export")
 
     return issues
 

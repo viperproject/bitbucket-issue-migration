@@ -1,21 +1,12 @@
-#!/usr/bin/python
-import json
+#!/usr/bin/env python3
 import sys
-import os
-from dateutil import parser
-import requests
-from requests import Request
-from requests_toolbelt.utils import dump
-import requests_toolbelt
+import dateutil
+import argparse
+from github.GithubException import UnknownObjectException
+from github import InputFileContent
 import config
 from migrate.bitbucket import BitbucketExport
 from migrate.github import GithubImport
-from warnings import warn
-
-from github.GithubException import UnknownObjectException
-from github import InputFileContent
-import argparse
-from collections import namedtuple
 
 
 def map_bstatus_to_gstate(bissue):
@@ -52,7 +43,7 @@ def map_bkind_to_glabels(bissue, glabels):
 
 
 def time_string_to_date_string(timestring):
-    datetime = parser.parse(timestring)
+    datetime = dateutil.parser.parse(timestring)
     return datetime.strftime("%Y-%m-%d %H:%M")
 
 
@@ -69,6 +60,7 @@ def construct_gcomment_content(bcomment):
 
 def construct_gissue_body(bissue, battachments):
     sb = []
+
     # Header
     created_on = time_string_to_date_string(timestring=bissue["created_on"])
     updated_on = time_string_to_date_string(timestring=bissue["updated_on"])
@@ -78,9 +70,11 @@ def construct_gissue_body(bissue, battachments):
     else:
         sb.append("> " + created_on_msg + ", last updated on " + updated_on)
     sb.append("\n")
+
     # Content
     sb.append("\n")
     sb.append(bissue["content"])
+
     # Attachments
     sb.append("\n")
     if battachments:
@@ -116,6 +110,7 @@ def update_gissue(gissue, bissue, bexport):
     battachments = bexport.issue_attachments[issue_id]
     bcomments = bexport.issue_comments[issue_id]
 
+    # Update issue
     gissue.edit(
         title=bissue["title"],
         body=construct_gissue_body(bissue, battachments),
@@ -126,7 +121,7 @@ def update_gissue(gissue, bissue, bexport):
 
     num_comments = len(bcomments)
     gcomments = list(gissue.get_comments())
-    
+
     # Delete comments in excess
     gcomments_to_delete = gcomments[num_comments:]
     for i, gcomment in enumerate(gcomments_to_delete):
@@ -183,7 +178,7 @@ def bitbucket_to_github(bexport, gimport):
     print("Number of bitbucket issues in the export:", len(bexport.issues))
 
     if len(bexport.issues) < old_gissues_num:
-        warn("There are too many issues on Github")
+        print("Warning: there are too many issues on Github")
 
     for bissue in bexport.issues:
         issue_id = bissue["id"]
