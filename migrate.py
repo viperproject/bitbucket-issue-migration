@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import sys
-import dateutil
+from dateutil import parser
 import argparse
+import github
 from github.GithubException import UnknownObjectException
 from github import InputFileContent
 import config
@@ -43,7 +44,7 @@ def map_bkind_to_glabels(bissue, glabels):
 
 
 def time_string_to_date_string(timestring):
-    datetime = dateutil.parser.parse(timestring)
+    datetime = parser.parse(timestring)
     return datetime.strftime("%Y-%m-%d %H:%M")
 
 
@@ -58,7 +59,7 @@ def construct_gcomment_content(bcomment):
     return "".join(sb)
 
 
-def construct_gissue_body(bissue, battachments):
+def construct_gissue_body(gimport, bissue, battachments):
     sb = []
 
     # Header
@@ -87,9 +88,11 @@ def construct_gissue_body(bissue, battachments):
         sb.append("\n")
         for attachment in battachments:
             sb.append("\n")
+            name = attachment["hash"] + "__" + attachment["filename"]
+            attachment_file = gimport.attachments_gist.files[name]
             sb.append("* [**{}**]({}), uploaded by {}".format(
                 attachment["filename"],
-                attachment["url"],
+                attachment_file.raw_url,
                 attachment["user"]
             ))
     
@@ -103,7 +106,7 @@ def construct_gissue_labels(bissue):
     return list(glabels)
 
 
-def update_gissue(gissue, bissue, bexport):
+def update_gissue(gimport, gissue, bissue, bexport):
     if gissue.number != bissue["id"]:
         raise ValueError("Inconsistent issues (ids: {} and {})".format(gissue.number, bissue["id"]))
     issue_id = gissue.number
@@ -113,7 +116,7 @@ def update_gissue(gissue, bissue, bexport):
     # Update issue
     gissue.edit(
         title=bissue["title"],
-        body=construct_gissue_body(bissue, battachments),
+        body=construct_gissue_body(gimport, bissue, battachments),
         labels=construct_gissue_labels(bissue),
         state=map_bstatus_to_gstate(bissue),
         assignees=map_bassignee_to_gassignees(bissue)
@@ -147,28 +150,32 @@ def get_or_create_gissue(repo, issue_id, bissue):
     return gissue
 
 
-ATTACHMENTS_GIST_DESCRIPTION = "Attachments from the Bitbucket migration"
-
 def bitbucket_to_github(bexport, gimport):
     repo = gimport.repo
     user = gimport.github.get_user()
 
     # Migrate attachments
-    if False:  # TODO: Work in progress
-        print("Migrate attachments...")
-        attachments_gist = first_or_default = next(
-            (
-                x for x in user.get_gists()
-                if x.description == ATTACHMENTS_GIST_DESCRIPTION
-            ),
-            None
-        )
-        if attachments_gist is None:
-            attachments_gist = user.create_gist(
-                True,
-                {"empty.txt": InputFileContent("")},
-                ATTACHMENTS_GIST_DESCRIPTION
-            )
+    print("Migrate attachments...")
+    gist_description = "Attachments for the Bitbucket migration to {}".format(
+        repo.full_name
+    )
+    gist_files = {"# README.md": InputFileContent(gist_description)}
+    for attachments in bexport.issue_attachments.values():
+        for attachment in attachments:
+            name = attachment["hash"] + "__" + attachment["filename"]
+            gist_files[name] = InputFileContent(attachment["data"].decode("utf-8"))
+    attachments_gist = next(
+        (
+            x for x in user.get_gists()
+            if x.description == gist_description
+        ),
+        None
+    )
+    if attachments_gist is None:
+        attachments_gist = user.create_gist(True, gist_files, gist_description)
+    else:
+        attachments_gist.edit(gist_description, gist_files)
+    gimport.attachments_gist = attachments_gist
 
     # Migrate issues
     print("Migrate issues...")
@@ -184,7 +191,7 @@ def bitbucket_to_github(bexport, gimport):
         issue_id = bissue["id"]
         print("Processing issue #{}... [rate limiting: {}]".format(issue_id, gimport.github.rate_limiting[0]))
         gissue = get_or_create_gissue(repo=repo, bissue=bissue, issue_id=issue_id)
-        update_gissue(gissue=gissue, bissue=bissue, bexport=bexport)
+        update_gissue(gimport=gimport, gissue=gissue, bissue=bissue, bexport=bexport)
     
 
 
@@ -212,6 +219,7 @@ def create_parser():
 
 
 def main():
+    #github.enable_console_debug_logging()
     parser = create_parser()
     args = parser.parse_args()
 

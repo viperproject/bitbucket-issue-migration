@@ -59,6 +59,7 @@ def load_issue_attachments(export_json, archive, issues):
     for attachment in attachments:
         issue_id = attachment["issue"]
         path = attachment["path"]
+        attachment["hash"] = attachment["path"].split("/")[1]
         with archive.open(path) as attachment_file:
             attachment["data"] = attachment_file.read()
         issue_attachments[issue_id].append(attachment)
