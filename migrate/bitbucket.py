@@ -1,67 +1,65 @@
 import json
-from zipfile import ZipFile
+from zipfile import ZipExtFile
+import requests
+
+
+def get_request_content(url):
+    res = requests.get(url)
+    if not res.ok:
+        res.raise_for_status()
+    return res.text
+
+
+def get_request_json(url):
+    res = requests.get(url)
+    if not res.ok:
+        res.raise_for_status()
+    return res.json()
+
+
+def get_paginated_json(url):
+    next_url = url
+
+    while next_url is not None:
+        result = get_request_json(next_url)
+        next_url = result.get("next", None)
+        for value in result["values"]:
+            yield value
 
 
 class BitbucketExport:
-    def __init__(self, issues_export_path):
-        self.issues_export_path = issues_export_path
-        
-        with ZipFile(issues_export_path) as archive:
-            with archive.open("db-1.0.json") as export_file:
-                export_data = export_file.read().decode("utf-8")
-            export_json = json.loads(export_data)
-            print("Load issues...")
-            self.issues = load_issues(export_json)
-            print("Load comments...")
-            self.issue_comments = load_issue_comments(export_json, self.issues)
-            print("Load attachments...")
-            self.issue_attachments = load_issue_attachments(export_json, archive, self.issues)
+    def __init__(self, repository_name):
+        self.repository_name = repository_name
+        self.repo_url = "https://api.bitbucket.org/2.0/repositories/" + repository_name
 
+    def get_issues(self):
+        print("Get all issues from '{}' on Bitbucket...".format(self.repository_name))
+        issues = list(get_paginated_json(self.repo_url + "/issues"))
+        issues.sort(key=lambda x: x["id"])
+        return issues
 
-def load_issues(export_json):
-    issues = sorted(export_json["issues"], key=lambda x: x["id"])
+    def get_issue_comments(self, issue_id):
+        comments = list(get_paginated_json(self.repo_url + "/issues/" + str(issue_id) + "/comments"))
+        comments.sort(key=lambda x: x["id"])
+        return comments
 
-    # Check invariant
-    for index, bissue in enumerate(issues, 1):
-        if index != bissue["id"]:
-            raise ValueError("The Bitbucket export does not contain some issues")
+    def get_issue_attachments(self, issue_id):
+        attachments_query = get_paginated_json(self.repo_url + "/issues/" + str(issue_id) + "/attachments")
+        attachments = { attachment["name"]: attachment for attachment in attachments_query }
+        return attachments
 
-    if len(issues) == 0:
-        print("Warning: could not find any issue in the Bitbucket export")
+    def get_issue_attachment_content(self, issue_id, attachment_name):
+        print("get_issue_attachment_content({}, {})".format(issue_id, attachment_name))
+        data = get_request_content(self.repo_url + "/issues/" + str(issue_id) + "/attachments/" + attachment_name)
+        return data
 
-    return issues
+    def get_pull_requests(self):
+        print("Get all pull requests from '{}' on Bitbucket...".format(self.repository_name))
+        issues = list(get_paginated_json(self.repo_url + "/pullrequests"))
+        issues.sort(key=lambda x: x["id"])
+        return issues
 
-
-def load_issue_comments(export_json, issues):
-    comments = export_json["comments"]
-    issue_comments = {}
-
-    for issue in issues:
-        issue_comments[issue["id"]] = []
-
-    for comment in comments:
-        issue_id = comment["issue"]
-        issue_comments[issue_id].append(comment)
-
-    for comments in issue_comments.values():
-        comments.sort(key=lambda x: x["created_on"])
-
-    return issue_comments
-
-
-def load_issue_attachments(export_json, archive, issues):
-    attachments = export_json["attachments"]
-    issue_attachments = {}
-
-    for issue in issues:
-        issue_attachments[issue["id"]] = []
-
-    for attachment in attachments:
-        issue_id = attachment["issue"]
-        path = attachment["path"]
-        attachment["hash"] = attachment["path"].split("/")[1]
-        with archive.open(path) as attachment_file:
-            attachment["data"] = attachment_file.read()
-        issue_attachments[issue_id].append(attachment)
-
-    return issue_attachments
+    def get_pull_requests_comments(self, pull_requests_id):
+        comments = list(get_paginated_json(self.repo_url + "/pullrequests/" + str(pull_requests_id) + "/comments"))
+        comments.sort(key=lambda x: x["id"])
+        return comments

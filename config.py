@@ -14,9 +14,9 @@ STATE_MAPPING = {
     "on hold": "suggestion",
 }
 
-# Bitbucket has several issue states.
+# Bitbucket has several issue and pull request states.
 # All states that are not listed in this set will be closed.
-OPEN_ISSUE_STATES = {
+OPEN_ISSUE_OR_PULL_REQUEST_STATES = {
     "open",
     "new",
     "on hold",
@@ -25,10 +25,10 @@ OPEN_ISSUE_STATES = {
 # Mapping of known Bitbucket to their corresponding GitHub repo
 # This information is used to convert links
 KNOWN_REPO_MAPPING = {
-    "viperproject/silver": "fpoli/viper-silver",
-    #"viperproject/carbon": "fpoli/viper-carbon",
-    #"viperproject/silicon": "fpoli/viper-silicon",
-    #"viperproject/viperserver": "fpoli/viper-viperserver",
+    "viperproject/silver": "viperproject/silver",
+    #"viperproject/carbon": "viperproject/carbon",
+    #"viperproject/silicon": "viperproject/silicon",
+    #"viperproject/viperserver": "viperproject/viperserver",
 }
 
 # Mapping of known Bitbucket repos to their number of issues.

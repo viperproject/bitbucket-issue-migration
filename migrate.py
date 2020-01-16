@@ -11,9 +11,9 @@ from migrate.github import GithubImport
 from linking import replace_links_to_users
 
 
-def map_bstatus_to_gstate(bissue):
-    bstatus = bissue["status"]
-    if bstatus in config.OPEN_ISSUE_STATES:
+def map_bstate_to_gstate(bissue):
+    bstate = bissue["state"]
+    if bstate in config.OPEN_ISSUE_OR_PULL_REQUEST_STATES:
         return "open"
     else:
         return "closed"
@@ -23,16 +23,18 @@ def map_bassignee_to_gassignees(bissue):
     bassignee = bissue["assignee"]
     if bassignee is None:
         return []
-    elif bassignee in config.USER_MAPPING:
-        return [config.USER_MAPPING[bassignee]]
     else:
-        return []
+        nickname = bassignee["nickname"]
+        if nickname in config.USER_MAPPING:
+            return [config.USER_MAPPING[nickname]]
+        else:
+            return []
 
 
-def map_bstatus_to_glabels(bissue, glabels):
-    bstatus = bissue["status"]
-    if bstatus in config.STATE_MAPPING:
-        glabels.add(config.STATE_MAPPING[bstatus])
+def map_bstate_to_glabels(bissue, glabels):
+    bstate = bissue["state"]
+    if bstate in config.STATE_MAPPING:
+        glabels.add(config.STATE_MAPPING[bstate])
 
 
 def map_bkind_to_glabels(bissue, glabels):
@@ -51,10 +53,9 @@ def time_string_to_date_string(timestring):
 
 def construct_gcomment_body(bcomment):
     sb = []
-    content = bcomment["content"]
+    content = bcomment["content"]["raw"]
     comment_created_on = time_string_to_date_string(timestring=bcomment["created_on"])
-    sb.append("> **@" + bcomment["user"] + "** commented on " + comment_created_on)
-    sb.append("\n")
+    sb.append("> **@" + bcomment["user"]["nickname"] + "** commented on " + comment_created_on + "\n")
     sb.append("\n")
     sb.append("" if content is None else content)
     return "".join(sb)
@@ -66,74 +67,95 @@ def construct_gissue_body(gimport, bissue, battachments):
     # Header
     created_on = time_string_to_date_string(timestring=bissue["created_on"])
     updated_on = time_string_to_date_string(timestring=bissue["updated_on"])
-    created_on_msg = "Created by **@" + bissue["reporter"] + "** on " + created_on
+    created_on_msg = "Created by **@" + bissue["reporter"]["nickname"] + "** on " + created_on
     if created_on == updated_on:
-        sb.append("> " + created_on_msg)
+        sb.append("> " + created_on_msg + "\n")
     else:
-        sb.append("> " + created_on_msg + ", last updated on " + updated_on)
-    sb.append("\n")
+        sb.append("> " + created_on_msg + ", last updated on " + updated_on + "\n")
 
     # Content
     sb.append("\n")
-    sb.append(bissue["content"])
+    sb.append(bissue["content"]["raw"])
+    sb.append("\n")
 
     # Attachments
-    sb.append("\n")
     if battachments:
         sb.append("\n")
+        sb.append("---\n")
         sb.append("\n")
-        sb.append("---")
-        sb.append("\n")
-        sb.append("\n")
-        sb.append("Attachments:")
-        sb.append("\n")
-        for attachment in battachments:
-            sb.append("\n")
-            name = attachment["hash"] + "__" + attachment["filename"]
-            attachment_file = gimport.attachments_gist.files[name]
-            sb.append("* [**{}**]({}), uploaded by {}".format(
-                attachment["filename"],
-                attachment_file.raw_url,
-                attachment["user"]
+        sb.append("Attachments:\n")
+        for name in battachments.keys():
+            attachments_gist = gimport.get_issue_attachments_gist(bissue["id"])
+            sb.append("* [**{}**]({})\n".format(
+                name,
+                attachments_gist.files[name].raw_url
             ))
-    
+
+    return "".join(sb)
+
+
+def construct_gpull_request_body(gimport, bpull_request):
+    sb = []
+
+    # Header
+    created_on = time_string_to_date_string(timestring=bpull_request["created_on"])
+    updated_on = time_string_to_date_string(timestring=bpull_request["updated_on"])
+    created_on_msg = " **Pull request** :twisted_rightwards_arrows: created by **@" + bpull_request["author"]["nickname"] + "** on " + created_on
+    if created_on == updated_on:
+        sb.append("> " + created_on_msg + "\n")
+    else:
+        sb.append("> " + created_on_msg + ", last updated on " + updated_on + "\n")
+
+    if bpull_request["participants"]:
+        sb.append(">\n")
+        sb.append("> Participants:\n")
+        sb.append(">\n")
+        for participant in bpull_request["participants"]:
+            sb.append("> * [**{}**]".format(participant["user"]["nickname"]))
+            if participant["role"] == "REVIEWER":
+                sb.append(" (reviewer)")
+            if participant["approved"]:
+                sb.append(" :heavy_check_mark:")
+            sb.append("\n")
+
+    sb.append(">\n")
+    source = bpull_request["source"]
+    sb.append("> Source: repository {}, hash {}, branch {}\n".format(
+        source["repository"]["full_name"],
+        source["commit"]["hash"],
+        source["branch"]["name"],
+    ))
+
+    destination = bpull_request["destination"]
+    sb.append("> Destination: repository {}, hash {}, branch {}\n".format(
+        destination["repository"]["full_name"],
+        destination["commit"]["hash"],
+        destination["branch"]["name"],
+    ))
+
+    sb.append(">\n")
+    destination = bpull_request["destination"]
+    sb.append("> State: **{}**\n".format(bpull_request["state"]))
+
+    # Content
+    sb.append("\n")
+    sb.append(bpull_request["description"])
+    sb.append("\n")
+
     return "".join(sb)
 
 
 def construct_gissue_labels(bissue):
     glabels = set()
     map_bkind_to_glabels(bissue=bissue, glabels=glabels)
-    map_bstatus_to_glabels(bissue=bissue, glabels=glabels)
+    map_bstate_to_glabels(bissue=bissue, glabels=glabels)
     return list(glabels)
 
 
-def update_gissue(gimport, gissue, bissue, bexport):
-    if gissue.number != bissue["id"]:
-        raise ValueError("Inconsistent issues (ids: {} and {})".format(gissue.number, bissue["id"]))
+def update_gissue_comments(gissue, bcomments):
     issue_id = gissue.number
-    battachments = bexport.issue_attachments[issue_id]
-    bcomments = bexport.issue_comments[issue_id]
-
-    # Update issue
-    issue_body = replace_links_to_users(
-        construct_gissue_body(gimport, bissue, battachments)
-    )
-    gissue.edit(
-        title=bissue["title"],
-        body=issue_body,
-        labels=construct_gissue_labels(bissue),
-        state=map_bstatus_to_gstate(bissue),
-        assignees=map_bassignee_to_gassignees(bissue)
-    )
-
     num_comments = len(bcomments)
     gcomments = list(gissue.get_comments())
-
-    # Delete comments in excess
-    gcomments_to_delete = gcomments[num_comments:]
-    for i, gcomment in enumerate(gcomments_to_delete):
-        print("Delete extra Gituhb comment {}/{} of issue #{}...".format(i + 1, len(gcomments_to_delete), issue_id))
-        gcomment.delete()
 
     # Create missing comments and update them
     for comment_num, bcomment in enumerate(bcomments):
@@ -144,59 +166,121 @@ def update_gissue(gimport, gissue, bissue, bexport):
         else:
             gissue.create_comment(comment_body)
 
+    # Delete comments in excess
+    gcomments_to_delete = gcomments[num_comments:]
+    for i, gcomment in enumerate(gcomments_to_delete):
+        print("Delete extra Gituhb comment {}/{} of issue #{}...".format(i + 1, len(gcomments_to_delete), issue_id))
+        gcomment.delete()
 
-def get_or_create_gissue(repo, issue_id, bissue):
-    try:
-        gissue = repo.get_issue(issue_id)
-    except UnknownObjectException:
-        gissue = repo.create_issue("[issue {}]".format(issue_id))
-    assert gissue.number == issue_id
-    return gissue
+
+def update_gissue(bissue, gissue, bexport, gimport):
+    assert gissue.number == bissue["id"]
+    issue_id = gissue.number
+
+    # Create or update attachments
+    battachments = bexport.get_issue_attachments(issue_id)
+    if battachments:
+        gist_description = "Attachments for issue #{} of {}".format(
+            issue_id,
+            gimport.repo.full_name
+        )
+        gist_files = {"# README.md": InputFileContent(gist_description)}
+        for name in battachments.keys():
+            content = bexport.get_issue_attachment_content(issue_id, name)
+            gist_files[name] = InputFileContent(content)
+        attachments_gist = gimport.get_gist_by_description(gist_description)
+        if attachments_gist is None:
+            attachments_gist = gimport.github.get_user().create_gist(True, gist_files, gist_description)
+        else:
+            attachments_gist.edit(gist_description, gist_files)
+        gimport.set_issue_attachments_gist(issue_id, attachments_gist)
+
+    # Update issue
+    issue_body = replace_links_to_users(
+        construct_gissue_body(gimport, bissue, battachments)
+    )
+    gissue.edit(
+        title=bissue["title"],
+        body=issue_body,
+        labels=construct_gissue_labels(bissue),
+        state=map_bstate_to_gstate(bissue),
+        assignees=map_bassignee_to_gassignees(bissue)
+    )
+
+    # Update comments
+    bcomments = bexport.get_issue_comments(issue_id)
+    update_gissue_comments(gissue, bcomments)
+
+
+def update_gissue_for_pull_request(gimport, bexport, gissue, bpull_request):
+    pull_requests_id_offset = KNOWN_ISSUES_COUNT_MAPPING[gimport.repo.full_name]
+    assert gissue.number == bpull_request["id"] + pull_requests_id_offset
+    pull_request_id = bpull_request["id"]
+
+    # Update issue
+    issue_body = replace_links_to_users(
+        construct_gpull_request_body(gimport, bissue, battachments)
+    )
+    gissue.edit(
+        title=bpull_request["title"],
+        body=issue_body,
+        labels=construct_gissue_labels(bissue),
+        state=map_bstate_to_gstate(bissue),
+        assignees=map_bassignee_to_gassignees(bissue)
+    )
+
+    # Update comments
+    bcomments = bexport.get_pull_request_comments(pull_request_id)
+    update_gissue_comments(gissue, bcomments)
 
 
 def bitbucket_to_github(bexport, gimport):
     repo = gimport.repo
     user = gimport.github.get_user()
-
-    # Migrate attachments
-    print("Migrate attachments...")
-    gist_description = "Attachments for the Bitbucket migration to {}".format(
-        repo.full_name
-    )
-    gist_files = {"# README.md": InputFileContent(gist_description)}
-    for attachments in bexport.issue_attachments.values():
-        for attachment in attachments:
-            name = attachment["hash"] + "__" + attachment["filename"]
-            gist_files[name] = InputFileContent(attachment["data"].decode("utf-8"))
-    attachments_gist = next(
-        (
-            x for x in user.get_gists()
-            if x.description == gist_description
-        ),
-        None
-    )
-    if attachments_gist is None:
-        attachments_gist = user.create_gist(True, gist_files, gist_description)
-    else:
-        attachments_gist.edit(gist_description, gist_files)
-    gimport.attachments_gist = attachments_gist
+    gissues = {}
 
     # Migrate issues
     print("Migrate issues...")
-    bissues = bexport.issues
+    bissues = bexport.get_issues()
     old_gissues_num = repo.get_issues(state="all").totalCount
     print("Number of github issues in '{}' before the migration: {}".format(repo.full_name, old_gissues_num))
-    print("Number of bitbucket issues in the export:", len(bexport.issues))
+    print("Number of bitbucket issues in the export:", len(bissues))
 
-    if len(bexport.issues) < old_gissues_num:
+    if len(bissues) < old_gissues_num:
         print("Warning: there are too many issues on Github")
 
-    for bissue in bexport.issues:
+    for bissue in bissues:
         issue_id = bissue["id"]
-        print("Processing issue #{}... [rate limiting: {}]".format(issue_id, gimport.github.rate_limiting[0]))
-        gissue = get_or_create_gissue(repo=repo, bissue=bissue, issue_id=issue_id)
-        update_gissue(gimport=gimport, gissue=gissue, bissue=bissue, bexport=bexport)
-    
+        print("Pre-processing issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
+        gissue = gimport.get_or_create_gissue(issue_id)
+        gissues[issue_id] = gissue
+
+    for bissue in bissues:
+        issue_id = bissue["id"]
+        print("Processing issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
+        gissue = gissues[issue_id]
+        update_gissue(gimport=gimport, bexport=bexport, gissue=gissue, bissue=bissue)
+
+    # Migrate pull requests
+    print("Migrate pull requests...")
+    assert repo.full_name in KNOWN_ISSUES_COUNT_MAPPING
+    assert KNOWN_ISSUES_COUNT_MAPPING[repo.full_name] == repo.get_issues(state="all").totalCount
+    pull_requests_id_offset = KNOWN_ISSUES_COUNT_MAPPING[repo.full_name]
+    bpull_requests = bexport.get_pull_requests()
+
+    for pull_request in bpull_requests:
+        pull_request_id = pull_request["id"]
+        issue_id = pull_request_id + pull_requests_id_offset
+        print("Pre-processing pull-request #{} (issue #{})... [rate limiting: {}]".format(pull_request_id, issue_id, gimport.get_remaining_rate_limit()))
+        gissue = gimport.get_or_create_gissue(issue_id)
+        gissues[issue_id] = gissue
+
+    for pull_request in bpull_requests:
+        pull_request_id = pull_request["id"]
+        issue_id = pull_request_id + pull_requests_id_offset
+        print("Processing pull-request #{}... [rate limiting: {}]".format(pull_request_id, gimport.get_remaining_rate_limit()))
+        gissues[issue_id] = gissue
+        update_gissue_for_pull_request(gimport=gimport, bexport=bexport, gissue=gissue, bpull_request=pull_request)
 
 
 def create_parser():
@@ -205,31 +289,30 @@ def create_parser():
         description="Migrate Bitbucket issues to Github"
     )
     parser.add_argument(
-        "-t", "--access-token",
+        "-t", "--github-access-token",
         help="Github Access Token",
         required=True
     )
     parser.add_argument(
-        "-i", "--issues",
-        help="Path to the zip file containing the export of Bitbucket issues",
+        "-b", "--bitbucket-repository",
+        help="Full name of the Bitbucket repository (e.g. viperproject/silver)",
         required=True
     )
     parser.add_argument(
-        "-r", "--repository",
-        help="Full name or id of the Github repository",
+        "-g", "--github-repository",
+        help="Full name of the Github repository (e.g. viperproject/silver)",
         required=True
     )
     return parser
 
 
 def main():
-    #github.enable_console_debug_logging()
     parser = create_parser()
     args = parser.parse_args()
-
-    bexport = BitbucketExport(args.issues)
-    gimport = GithubImport(args.access_token, args.repository)
+    bexport = BitbucketExport(args.bitbucket_repository)
+    gimport = GithubImport(args.github_access_token, args.github_repository)
     bitbucket_to_github(bexport=bexport, gimport=gimport)
 
 
-main()
+if __name__ == "__main__":
+    main()
