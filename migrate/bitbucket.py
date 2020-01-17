@@ -1,5 +1,5 @@
-from zipfile import ZipExtFile
 from .utils import get_request_content, get_request_json
+
 
 def get_paginated_json(url):
     next_url = url
@@ -30,14 +30,14 @@ class BitbucketExport:
         comments.sort(key=lambda x: x["id"])
         return comments
 
-    def get_issue_activity(self, issue_id):
-        activity = list(get_paginated_json(self.repo_url + "/issues/" + str(issue_id) + "/activity"))
-        activity.sort(key=lambda x: x["id"])
-        return activity
+    def get_issue_changes(self, issue_id):
+        changes = list(get_paginated_json(self.repo_url + "/issues/" + str(issue_id) + "/changes"))
+        changes.sort(key=lambda x: x["id"])
+        return changes
 
     def get_issue_attachments(self, issue_id):
         attachments_query = get_paginated_json(self.repo_url + "/issues/" + str(issue_id) + "/attachments")
-        attachments = { attachment["name"]: attachment for attachment in attachments_query }
+        attachments = {attachment["name"]: attachment for attachment in attachments_query}
         return attachments
 
     def get_issue_attachment_content(self, issue_id, attachment_name):

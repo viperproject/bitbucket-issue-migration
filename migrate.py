@@ -355,7 +355,7 @@ def bitbucket_to_github(bexport, gimport, args):
     print("Migrate bitbucket attachments to github...")
     for bissue in bissues:
         issue_id = bissue["id"]
-        print("Migrate attachments for bitbucket issue #{}...".format(issue_id))
+        print("Migrate attachments for bitbucket issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
         battachments = bexport.get_issue_attachments(issue_id)
         if battachments:
             gist_data = construct_gist_from_bissue_attachments(bissue, bexport)

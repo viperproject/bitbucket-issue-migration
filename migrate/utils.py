@@ -1,5 +1,6 @@
 import requests
 
+
 def get_request_content(url):
     res = requests.get(url)
     if not res.ok:

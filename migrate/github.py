@@ -1,7 +1,9 @@
 from github import Github
 from github.GithubException import UnknownObjectException
 from time import sleep
+import requests
 from .utils import get_request_json
+
 
 class GithubImport:
     def __init__(self, access_token, repository):
@@ -10,7 +12,7 @@ class GithubImport:
         try:
             self.repo = self.github.get_repo(repository)
         except UnknownObjectException:
-            raise Exception("Failed to get the repository '{}'".format(args.repository))
+            raise Exception("Failed to get the repository '{}'".format(repository))
 
     def get_repo_full_name(self):
         return self.repo.full_name
@@ -80,7 +82,7 @@ class GithubImport:
 
         # Create or update comments
         for comment_num, comment_data in enumerate(comments_data):
-            print("Set comment {}/{} of github issue #{}...".format(comment_num+1, num_comments, issue_id))
+            print("Set comment {}/{} of github issue #{}...".format(comment_num + 1, num_comments, issue_id))
             comment_body = comment_data["body"]
             if comment_num < len(existing_comments):
                 existing_comments[comment_num].edit(comment_body)
@@ -90,7 +92,7 @@ class GithubImport:
         # Delete comments in excess
         comments_to_delete = existing_comments[num_comments:]
         for i, gcomment in enumerate(comments_to_delete):
-            print("Delete extra gituhb comment {}/{} of issue #{}...".format(i + 1, len(gcomments_to_delete), issue_id))
+            print("Delete extra gituhb comment {}/{} of issue #{}...".format(i + 1, len(comments_to_delete), issue_id))
             gcomment.delete()
 
     def update_issue_with_comments(self, issue, issue_data):
