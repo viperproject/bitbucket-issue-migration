@@ -173,17 +173,17 @@ def construct_gpull_request_body(bpull_request):
 
 
 def construct_gcomment_body_for_change(bchange):
-    assert len(bchange["changes"].keys()) == 1, str(bchange)
     created_on = time_string_to_date_string(bchange["created_on"])
-    changed_key = bchange["changes"].keys()[0]
-    change = bchange["changes"][changed_key]
-    return "> **@{}** changed `{}` from `{}` to `{}` on {}".format(
-        bchange["user"]["nickname"],
-        changed_key,
-        change["old"],
-        change["new"],
-        created_on
-    )
+    sb = []
+    for changed_key, change in bchange["changes"].items():
+        sb.append("> **@{}** changed `{}` from `{}` to `{}` on {}\n".format(
+            bchange["user"]["nickname"],
+            changed_key,
+            change["old"],
+            change["new"],
+            created_on
+        ))
+    return "".join(sb)
 
 
 def construct_gcomment_body_for_activity(bactivity):
@@ -359,14 +359,15 @@ def bitbucket_to_github(bexport, gimport, args):
 
     # Migrate attachments
     print("Migrate bitbucket attachments to github...")
-    for bissue in bissues:
-        issue_id = bissue["id"]
-        print("Migrate attachments for bitbucket issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
-        battachments = bexport.get_issue_attachments(issue_id)
-        if battachments:
-            gist_data = construct_gist_from_bissue_attachments(bissue, bexport)
-            gist = gimport.get_or_create_gist_by_description(gist_data)
-            attachment_gist_by_issue_id[issue_id] = gist
+    if not args.skip_attachments:
+        for bissue in bissues:
+            issue_id = bissue["id"]
+            print("Migrate attachments for bitbucket issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
+            battachments = bexport.get_issue_attachments(issue_id)
+            if battachments:
+                gist_data = construct_gist_from_bissue_attachments(bissue, bexport)
+                gist = gimport.get_or_create_gist_by_description(gist_data)
+                attachment_gist_by_issue_id[issue_id] = gist
 
     # Prepare issues
     print("Prepare github issues...")
@@ -490,8 +491,8 @@ def create_parser():
         required=True
     )
     parser.add_argument(
-        "--skip-issues",
-        help="Skip the migration of issues (development only)",
+        "--skip-attachments",
+        help="Skip the migration of attachments (development only)",
         action='store_true'
     )
     parser.add_argument(
