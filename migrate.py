@@ -70,13 +70,16 @@ def convert_date(bb_date):
     raise RuntimeError("Could not parse date: {}".format(bb_date))
 
 
-def construct_gcomment_body(bcomment):
+def construct_gcomment_body(bcomment, bcomments_by_id):
     sb = []
-    content = bcomment["content"]["raw"]
     comment_created_on = time_string_to_date_string(bcomment["created_on"])
     sb.append("> **@" + bcomment["user"]["nickname"] + "** commented on " + comment_created_on + "\n")
     sb.append("\n")
-    sb.append("" if content is None else content)
+    if "parent" in bcomment:
+        parent_comment = bcomments_by_id[bcomment["parent"]["id"]]
+        if parent_comment["content"]["raw"] is not None:
+            sb.append("> {}\n\n".format(parent_comment["content"]["raw"]))
+    sb.append("" if bcomment["content"]["raw"] is None else bcomment["content"]["raw"])
     return "".join(sb)
 
 
@@ -224,11 +227,11 @@ def construct_gissue_title_for_pull_request(bpull_request):
 def construct_gissue_comments(bcomments):
     comments = []
 
-    for bcomment in bcomments:
+    for comment_id, bcomment in bcomments:
         # Skip empty comments
         if bcomment["content"] is not None:
             comment = {
-                "body": replace_links_to_users(construct_gcomment_body(bcomment)),
+                "body": replace_links_to_users(construct_gcomment_body(bcomment, bcomments)),
                 "created_at": convert_date(bcomment["created_on"])
             }
             comments.append(comment)
@@ -279,9 +282,13 @@ def construct_gissue_comments_for_activity(bactivity):
     comments = []
     for single_activity in bactivity:
         if "update" in single_activity or "approval" in single_activity:
+            if "update" in bactivity:
+                activity_date = single_activity["update"]["date"]
+            elif "approval" in bactivity:
+                activity_date = single_activity["approval"]["date"]
             comment = {
                 "body": replace_links_to_users(construct_gcomment_body_for_activity(single_activity)),
-                "created_at": convert_date(single_activity["created_on"])
+                "created_at": convert_date(activity_date)
             }
             comments.append(comment)
     return comments
