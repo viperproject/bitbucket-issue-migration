@@ -104,14 +104,15 @@ def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id):
         sb.append("\n")
         sb.append("Attachments:\n")
         for name in battachments.keys():
-            if bissue["id"] in attachment_gist_by_issue_id:
-                attachments_gist = attachment_gist_by_issue_id[bissue["id"]]
+            issue_id = bissue["id"]
+            if issue_id in attachment_gist_by_issue_id:
+                attachments_gist = attachment_gist_by_issue_id[issue_id]
                 sb.append("* [**`{}`**]({})\n".format(
                     name,
                     attachments_gist.files[name].raw_url
                 ))
             else:
-                print("Error: missing gist for the attachments of issue #{}.")
+                print("Error: missing gist for the attachments of issue #{}.".format(issue_id))
                 sb.append("* **`{}`** (missing link)\n".format(name))
 
     return "".join(sb)
@@ -380,7 +381,7 @@ def bitbucket_to_github(bexport, gimport, args):
     for bpull_request in bpull_requests:
         issue_id = bpull_request["id"] + pull_requests_id_offset
         print("Prepare github issue #{} from bitbucket pull request...".format(issue_id))
-        gissue = construct_gissue_from_bpull_request(bpull_requests, bexport)
+        gissue = construct_gissue_from_bpull_request(bpull_request, bexport)
         issues_data.append(gissue)
 
     # Upload github issues
