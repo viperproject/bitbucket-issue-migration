@@ -149,16 +149,16 @@ def construct_gpull_request_body(bpull_request):
     sb.append(">\n")
     source = bpull_request["source"]
     sb.append("> Source: repository `{}`, hash {}, branch `{}`\n".format(
-        source["repository"]["full_name"],
-        source["commit"]["hash"],
-        source["branch"]["name"],
+        source["repository"]["full_name"] if source["repository"] is not None else "(none)",
+        source["commit"]["hash"] if source["commit"] is not None else "(none)",
+        source["branch"]["name"] if source["branch"] is not None else "(none)",
     ))
 
     destination = bpull_request["destination"]
     sb.append("> Destination: repository `{}`, hash {}, branch `{}`\n".format(
-        destination["repository"]["full_name"],
-        destination["commit"]["hash"],
-        destination["branch"]["name"],
+        destination["repository"]["full_name"] if destination["repository"] is not None else "(none)",
+        destination["commit"]["hash"] if destination["commit"] is not None else "(none)",
+        destination["branch"]["name"] if destination["branch"] is not None else "(none)",
     ))
 
     sb.append(">\n")
@@ -369,6 +369,8 @@ def bitbucket_to_github(bexport, gimport, args):
                 gist_data = construct_gist_from_bissue_attachments(bissue, bexport)
                 gist = gimport.get_or_create_gist_by_description(gist_data)
                 attachment_gist_by_issue_id[issue_id] = gist
+    else:
+        print("SKIPPED")
 
     # Prepare issues
     print("Prepare github issues...")
