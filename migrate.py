@@ -104,11 +104,15 @@ def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id):
         sb.append("\n")
         sb.append("Attachments:\n")
         for name in battachments.keys():
-            attachments_gist = attachment_gist_by_issue_id[bissue["id"]]
-            sb.append("* [**{}**]({})\n".format(
-                name,
-                attachments_gist.files[name].raw_url
-            ))
+            if bissue["id"] in attachment_gist_by_issue_id:
+                attachments_gist = attachment_gist_by_issue_id[bissue["id"]]
+                sb.append("* [**`{}`**]({})\n".format(
+                    name,
+                    attachments_gist.files[name].raw_url
+                ))
+            else:
+                print("Error: missing gist for the attachments of issue #{}.")
+                sb.append("* **`{}`** (missing link)\n".format(name))
 
     return "".join(sb)
 
@@ -143,14 +147,14 @@ def construct_gpull_request_body(bpull_request):
 
     sb.append(">\n")
     source = bpull_request["source"]
-    sb.append("> Source: repository {}, hash {}, branch {}\n".format(
+    sb.append("> Source: repository `{}`, hash {}, branch `{}`\n".format(
         source["repository"]["full_name"],
         source["commit"]["hash"],
         source["branch"]["name"],
     ))
 
     destination = bpull_request["destination"]
-    sb.append("> Destination: repository {}, hash {}, branch {}\n".format(
+    sb.append("> Destination: repository `{}`, hash {}, branch `{}`\n".format(
         destination["repository"]["full_name"],
         destination["commit"]["hash"],
         destination["branch"]["name"],
@@ -158,7 +162,7 @@ def construct_gpull_request_body(bpull_request):
 
     sb.append(">\n")
     destination = bpull_request["destination"]
-    sb.append("> State: **{}**\n".format(bpull_request["state"]))
+    sb.append("> State: **`{}`**\n".format(bpull_request["state"]))
 
     # Content
     sb.append("\n")
@@ -224,7 +228,7 @@ def construct_gissue_comments(bcomments):
                 "body": replace_links_to_users(construct_gcomment_body(bcomment)),
                 "created_at": convert_date(bcomment["created_on"])
             }
-            comments.push(comment)
+            comments.append(comment)
 
     comments.sort(key=lambda x: x["created_at"])
     return comments
