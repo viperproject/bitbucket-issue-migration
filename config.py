@@ -61,6 +61,9 @@ KIND_MAPPING = {
 # Therefore, we map some bitbucket states to github "labels".
 STATE_MAPPING = {
     "on hold": "suggestion",
+    "DECLINED": "declined",
+    "MERGED": "merged",
+    "SUPERSEDED": "superseeded",
 }
 
 # Bitbucket has several issue and pull request states.

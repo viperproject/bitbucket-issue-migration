@@ -1,4 +1,4 @@
-# Bitbucket To Github Issues Migration
+# Bitbucket To Github Migration
 
 The expected steps are as follows:
 1. Migrate code & history of all repositories (using GitHub repo importer)

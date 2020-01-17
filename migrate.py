@@ -355,6 +355,7 @@ def bitbucket_to_github(bexport, gimport, args):
     print("Migrate bitbucket attachments to github...")
     for bissue in bissues:
         issue_id = bissue["id"]
+        print("Migrate attachments for bitbucket issue #{}...".format(issue_id))
         battachments = bexport.get_issue_attachments(issue_id)
         if battachments:
             gist_data = construct_gist_from_bissue_attachments(bissue, bexport)
@@ -366,13 +367,13 @@ def bitbucket_to_github(bexport, gimport, args):
     for bissue in bissues:
         issue_id = bissue["id"]
         print("Prepare github issue #{} from bitbucket issue...".format(issue_id))
-        gissue = construct_gissue_from_bissue(bissue)
+        gissue = construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id)
         issues_data.append(gissue)
 
     for bpull_request in bpull_requests:
         issue_id = bpull_request["id"] + pull_requests_id_offset
         print("Prepare github issue #{} from bitbucket pull request...".format(issue_id))
-        gissue = construct_gissue_from_bpull_request(bpull_requests)
+        gissue = construct_gissue_from_bpull_request(bpull_requests, bexport)
         issues_data.append(gissue)
 
     # Upload github issues
