@@ -7,7 +7,6 @@ class GithubImport:
     def __init__(self, access_token, repository):
         self.access_token = access_token
         self.github = Github(access_token)
-        self.issue_attachments_gist = {}
         try:
             self.repo = self.github.get_repo(repository)
         except UnknownObjectException:
@@ -33,22 +32,6 @@ class GithubImport:
             ),
             None
         )
-
-    def set_issue_attachments_gist(self, issue_id, gist):
-        self.issue_attachments_gist[issue_id] = gist
-
-    def get_issue_attachments_gist(self, issue_id):
-        return self.issue_attachments_gist[issue_id]
-
-    def get_or_create_issue(self, issue_id, title=None):
-        try:
-            gissue = self.repo.get_issue(issue_id)
-        except UnknownObjectException:
-            gissue = self.repo.create_issue(
-                title if title is not None else "[issue #{}]".format(issue_id)
-            )
-        assert gissue.number == issue_id
-        return gissue
 
     def get_or_create_gist_by_description(self, gist_data):
         gist = self.get_gist_by_description(gist_data["description"])
@@ -110,7 +93,7 @@ class GithubImport:
             print("Delete extra gituhb comment {}/{} of issue #{}...".format(i + 1, len(gcomments_to_delete), issue_id))
             gcomment.delete()
 
-    def update_issue(self, issue, issue_data):
+    def update_issue_with_comments(self, issue, issue_data):
         meta = issue_data["issue"]
         issue.edit(
             title=meta["title"],

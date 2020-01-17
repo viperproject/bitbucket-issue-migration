@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
-import sys
 import re
 from dateutil import parser
 import argparse
-import github
-from github.GithubException import UnknownObjectException
 from github import InputFileContent
 import config
 from migrate.bitbucket import BitbucketExport
@@ -76,7 +73,7 @@ def convert_date(bb_date):
 def construct_gcomment_body(bcomment):
     sb = []
     content = bcomment["content"]["raw"]
-    comment_created_on = time_string_to_date_string(timestring=bcomment["created_on"])
+    comment_created_on = time_string_to_date_string(bcomment["created_on"])
     sb.append("> **@" + bcomment["user"]["nickname"] + "** commented on " + comment_created_on + "\n")
     sb.append("\n")
     sb.append("" if content is None else content)
@@ -87,8 +84,8 @@ def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id):
     sb = []
 
     # Header
-    created_on = time_string_to_date_string(timestring=bissue["created_on"])
-    updated_on = time_string_to_date_string(timestring=bissue["updated_on"])
+    created_on = time_string_to_date_string(bissue["created_on"])
+    updated_on = time_string_to_date_string(bissue["updated_on"])
     created_on_msg = "Created by **@" + bissue["reporter"]["nickname"] + "** on " + created_on
     if created_on == updated_on:
         sb.append("> " + created_on_msg + "\n")
@@ -120,9 +117,13 @@ def construct_gpull_request_body(bpull_request):
     sb = []
 
     # Header
-    created_on = time_string_to_date_string(timestring=bpull_request["created_on"])
-    updated_on = time_string_to_date_string(timestring=bpull_request["updated_on"])
-    created_on_msg = " **Pull request** :twisted_rightwards_arrows: created by **@" + bpull_request["author"]["nickname"] + "** on " + created_on
+    created_on = time_string_to_date_string(bpull_request["created_on"])
+    updated_on = time_string_to_date_string(bpull_request["updated_on"])
+    if bpull_request["author"] is None:
+        author_msg = ""
+    else:
+        author_msg = "by **@" + bpull_request["author"]["nickname"] + " "
+    created_on_msg = " **Pull request** :twisted_rightwards_arrows: created " + author_msg + "on " + created_on
     if created_on == updated_on:
         sb.append("> " + created_on_msg + "\n")
     else:
@@ -167,6 +168,41 @@ def construct_gpull_request_body(bpull_request):
     return "".join(sb)
 
 
+def construct_gcomment_body_for_change(bchange):
+    assert len(bchange["changes"]) == 1, str(bchange)
+    created_on = time_string_to_date_string(bchange["created_on"])
+    return "> **@{}** changed `{}` from `{}` to `{}` on {}".format(
+        bchange["user"]["nickname"],
+        bchange["changes"][0],
+        bchange["changes"][0]["old"],
+        bchange["changes"][0]["new"],
+        created_on
+    )
+
+
+def construct_gcomment_body_for_activity(bactivity):
+    assert "comment" not in bactivity, str(bactivity)
+    sb = []
+
+    if "update" in bactivity:
+        update_activity = bactivity["update"]
+        on_date = time_string_to_date_string(update_activity["date"])
+        sb.append("> **@{}** updated the issue on {}".format(
+            update_activity["author"]["nickname"],
+            on_date
+        ))
+
+    if "approval" in bactivity:
+        approval_activity = bactivity["approval"]
+        on_date = time_string_to_date_string(approval_activity["date"])
+        sb.append("> :heavy_check_mark: **@{}** approved the pull request on {}".format(
+            approval_activity["user"]["nickname"],
+            on_date
+        ))
+
+    return "".join(sb)
+
+
 def construct_gissue_labels(bissue):
     glabels = set()
     map_bkind_to_glabels(bissue=bissue, glabels=glabels)
@@ -181,13 +217,15 @@ def construct_gissue_title_for_pull_request(bpull_request):
 def construct_gissue_comments(bcomments):
     comments = []
 
-    for comment_num, bcomment in enumerate(bcomments):
-        comment = {
-            "body": replace_links_to_users(construct_gcomment_body(bcomment)),
-            "created_at": convert_date(bcomment["created_on"])
-        }
-        comments.push(comment)
-    
+    for bcomment in bcomments:
+        # Skip empty comments
+        if bcomment["content"] is not None:
+            comment = {
+                "body": replace_links_to_users(construct_gcomment_body(bcomment)),
+                "created_at": convert_date(bcomment["created_on"])
+            }
+            comments.push(comment)
+
     comments.sort(key=lambda x: x["created_at"])
     return comments
 
@@ -202,7 +240,7 @@ def construct_gist_description_for_issue_attachments(bissue, bexport):
 def construct_gist_from_bissue_attachments(bissue, bexport):
     issue_id = bissue["id"]
     battachments = bexport.get_issue_attachments(issue_id)
-    
+
     if not battachments:
         return None
 
@@ -219,16 +257,47 @@ def construct_gist_from_bissue_attachments(bissue, bexport):
     }
 
 
+def construct_gissue_comments_for_changes(bchanges):
+    comments = []
+    for bchange in bchanges:
+        comment = {
+            "body": replace_links_to_users(construct_gcomment_body_for_change(bchange)),
+            "created_at": convert_date(bchange["created_on"])
+        }
+        comments.append(comment)
+    return comments
+
+
+def construct_gissue_comments_for_activity(bactivity):
+    comments = []
+    for single_activity in bactivity:
+        if "update" in single_activity or "approval" in single_activity:
+            comment = {
+                "body": replace_links_to_users(construct_gcomment_body_for_activity(single_activity)),
+                "created_at": convert_date(single_activity["created_on"])
+            }
+            comments.append(comment)
+    return comments
+
+
 def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id):
-    issue_id  = bissue["id"]
+    issue_id = bissue["id"]
+    battachments = bexport.get_issue_attachments(issue_id)
     bcomments = bexport.get_issue_comments(issue_id)
+    bchanges = bexport.get_issue_changes(issue_id)
 
     issue_body = replace_links_to_users(
         construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id)
     )
 
+    # Construct comments
+    comments = []
+    comments += construct_gissue_comments(bcomments)
+    comments += construct_gissue_comments_for_changes(bchanges)
+    comments.sort(key=lambda x: x["created_at"])
+
     return {
-        "issue" : {
+        "issue": {
             "title": bissue["title"],
             "body": issue_body,
             "created_at": convert_date(bissue["created_on"]),
@@ -237,18 +306,24 @@ def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id):
             "closed": map_bstate_to_gstate(bissue) == "closed",
             "labels": construct_gissue_labels(bissue),
         },
-        "comments": construct_gissue_comments(bcomments)
+        "comments": comments
     }
 
 
 def construct_gissue_from_bpull_request(bpull_request, bexport):
-    pull_requests_id_offset = config.KNOWN_ISSUES_COUNT_MAPPING[bexport.get_repo_full_name()]
     pull_request_id = bpull_request["id"]
     bcomments = bexport.get_pull_request_comments(pull_request_id)
+    bactivity = bexport.get_pull_request_activity(pull_request_id)
 
     issue_body = replace_links_to_users(
         construct_gpull_request_body(bpull_request)
     )
+
+    # Construct comments
+    comments = []
+    comments += construct_gissue_comments(bcomments)
+    comments += construct_gissue_comments_for_activity(bactivity)
+    comments.sort(key=lambda x: x["created_at"])
 
     return {
         "issue": {
@@ -260,69 +335,8 @@ def construct_gissue_from_bpull_request(bpull_request, bexport):
             "closed": map_bstate_to_gstate(bpull_request) == "closed",
             "labels": construct_gissue_labels(bpull_request),
         },
-        "comments": construct_gissue_comments(bcomments)
+        "comments": comments
     }
-
-
-def update_gissue(bissue, gissue, bexport, gimport):
-    assert gissue.number == bissue["id"]
-    issue_id = gissue.number
-
-    # Create or update attachments
-    battachments = bexport.get_issue_attachments(issue_id)
-    if battachments:
-        gist_description = "Attachments for issue #{} of {}".format(
-            issue_id,
-            gimport.repo.full_name
-        )
-        gist_files = {"# README.md": InputFileContent(gist_description)}
-        for name in battachments.keys():
-            content = bexport.get_issue_attachment_content(issue_id, name)
-            gist_files[name] = InputFileContent(content)
-        attachments_gist = gimport.get_gist_by_description(gist_description)
-        if attachments_gist is None:
-            attachments_gist = gimport.github.get_user().create_gist(True, gist_files, gist_description)
-        else:
-            attachments_gist.edit(gist_description, gist_files)
-        gimport.set_issue_attachments_gist(issue_id, attachments_gist)
-
-    # Update issue
-    issue_body = replace_links_to_users(
-        construct_gissue_body(gimport, bissue, battachments)
-    )
-    gissue.edit(
-        title=bissue["title"],
-        body=issue_body,
-        labels=construct_gissue_labels(bissue),
-        state=map_bstate_to_gstate(bissue),
-        assignees=map_bassignee_to_gassignees(bissue)
-    )
-
-    # Update comments
-    bcomments = bexport.get_issue_comments(issue_id)
-    gimport.update_issue_comments(gissue, construct_gissue_comments(bcomments))
-
-
-def update_gissue_for_pull_request(gimport, bexport, gissue, bpull_request):
-    pull_requests_id_offset = config.KNOWN_ISSUES_COUNT_MAPPING[gimport.repo.full_name]
-    assert gissue.number == bpull_request["id"] + pull_requests_id_offset
-    pull_request_id = bpull_request["id"]
-
-    # Update issue
-    issue_body = replace_links_to_users(
-        construct_gpull_request_body(gimport, bissue, battachments)
-    )
-    gissue.edit(
-        title=construct_gissue_title_for_pull_request(bpull_request),
-        body=issue_body,
-        labels=construct_gissue_labels(bissue),
-        state=map_bstate_to_gstate(bissue),
-        assignees=map_bassignee_to_gassignees(bissue)
-    )
-
-    # Update comments
-    bcomments = bexport.get_pull_request_comments(pull_request_id)
-    gimport.update_issue_comments(gissue, construct_gissue_comments(bcomments))
 
 
 def bitbucket_to_github(bexport, gimport, args):
@@ -358,7 +372,7 @@ def bitbucket_to_github(bexport, gimport, args):
     for bpull_request in bpull_requests:
         issue_id = bpull_request["id"] + pull_requests_id_offset
         print("Prepare github issue #{} from bitbucket pull request...".format(issue_id))
-        gissue = construct_gissue_from_bpull_requests(bpull_requests)
+        gissue = construct_gissue_from_bpull_request(bpull_requests)
         issues_data.append(gissue)
 
     # Upload github issues
@@ -371,7 +385,7 @@ def bitbucket_to_github(bexport, gimport, args):
             print("Error: existing github issue #{} should not exist.")
         else:
             gimport.update_issue_with_comments(issues_data[issue_id - 1])
-    
+
     for issue_id in range(existing_gissues.totalCount, len(issues_data) + 1):
         print("Create github issue #{}...".format(issue_id))
         gissue_data = issues_data[issue_id - 1]
@@ -435,7 +449,8 @@ def check(bexport, gimport, args):
         bpull_request_id = bpull_request["id"]
         if bpull_request_id % 10 == 0:
             print("Checking bitbucket pull request #{}...".format(bpull_request_id))
-        bnicknames.add(bpull_request["author"]["nickname"])
+        if bpull_request["author"] is not None:
+            bnicknames.add(bpull_request["author"]["nickname"])
         for bparticipant in bpull_request["participants"]:
             bnicknames.add(bparticipant["user"]["nickname"])
         for breviewer in bpull_request["reviewers"]:
@@ -444,7 +459,7 @@ def check(bexport, gimport, args):
             bnicknames.add(bcomment["user"]["nickname"])
     for nickname in bnicknames:
         if nickname not in config.USER_MAPPING:
-            print("Warning: bitbucket user '{}' is not configured in USER_MAPPING.".format(brepo_full_name))
+            print("Warning: bitbucket user '{}' is not configured in USER_MAPPING.".format(nickname))
 
 
 def create_parser():

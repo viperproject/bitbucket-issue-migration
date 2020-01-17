@@ -30,6 +30,11 @@ class BitbucketExport:
         comments.sort(key=lambda x: x["id"])
         return comments
 
+    def get_issue_activity(self, issue_id):
+        activity = list(get_paginated_json(self.repo_url + "/issues/" + str(issue_id) + "/activity"))
+        activity.sort(key=lambda x: x["id"])
+        return activity
+
     def get_issue_attachments(self, issue_id):
         attachments_query = get_paginated_json(self.repo_url + "/issues/" + str(issue_id) + "/attachments")
         attachments = { attachment["name"]: attachment for attachment in attachments_query }
@@ -63,7 +68,12 @@ class BitbucketExport:
             pull_requests.append(self.get_pull_request(pull_request_id))
         return pull_requests
 
-    def get_pull_requests_comments(self, pull_requests_id):
+    def get_pull_request_comments(self, pull_requests_id):
         comments = list(get_paginated_json(self.repo_url + "/pullrequests/" + str(pull_requests_id) + "/comments"))
         comments.sort(key=lambda x: x["id"])
         return comments
+
+    def get_pull_request_activity(self, pull_requests_id):
+        activity = list(get_paginated_json(self.repo_url + "/pullrequests/" + str(pull_requests_id) + "/activity"))
+        activity.sort(key=lambda x: x["id"])
+        return activity
