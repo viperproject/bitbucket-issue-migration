@@ -29,8 +29,7 @@ class BitbucketExport:
 
     def get_issue_comments(self, issue_id):
         comments = list(get_paginated_json(self.repo_url + "/issues/" + str(issue_id) + "/comments", self.session))
-        comments.sort(key=lambda x: x["id"])
-        return comments
+        return {comment["id"]: comment for comment in comments}
 
     def get_issue_changes(self, issue_id):
         changes = list(get_paginated_json(self.repo_url + "/issues/" + str(issue_id) + "/changes", self.session))

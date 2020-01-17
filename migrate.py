@@ -197,8 +197,9 @@ def construct_gcomment_body_for_activity(bactivity):
     if "update" in bactivity:
         update_activity = bactivity["update"]
         on_date = time_string_to_date_string(update_activity["date"])
-        sb.append("> **@{}** updated the issue on {}".format(
+        sb.append("> **@{}** changed the status to `{}` on {}".format(
             update_activity["author"]["nickname"],
+            update_activity["state"],
             on_date
         ))
 
@@ -227,7 +228,7 @@ def construct_gissue_title_for_pull_request(bpull_request):
 def construct_gissue_comments(bcomments):
     comments = []
 
-    for comment_id, bcomment in bcomments:
+    for comment_id, bcomment in bcomments.items():
         # Skip empty comments
         if bcomment["content"] is not None:
             comment = {
