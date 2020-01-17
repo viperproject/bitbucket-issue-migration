@@ -173,13 +173,15 @@ def construct_gpull_request_body(bpull_request):
 
 
 def construct_gcomment_body_for_change(bchange):
-    assert len(bchange["changes"]) == 1, str(bchange)
+    assert len(bchange["changes"].keys()) == 1, str(bchange)
     created_on = time_string_to_date_string(bchange["created_on"])
+    changed_key = bchange["changes"].keys()[0]
+    change = bchange["changes"][changed_key]
     return "> **@{}** changed `{}` from `{}` to `{}` on {}".format(
         bchange["user"]["nickname"],
-        bchange["changes"][0],
-        bchange["changes"][0]["old"],
-        bchange["changes"][0]["new"],
+        changed_key,
+        change["old"],
+        change["new"],
         created_on
     )
 
