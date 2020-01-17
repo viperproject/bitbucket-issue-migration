@@ -1,21 +1,5 @@
-import json
 from zipfile import ZipExtFile
-import requests
-
-
-def get_request_content(url):
-    res = requests.get(url)
-    if not res.ok:
-        res.raise_for_status()
-    return res.text
-
-
-def get_request_json(url):
-    res = requests.get(url)
-    if not res.ok:
-        res.raise_for_status()
-    return res.json()
-
+from .utils import get_request_content, get_request_json
 
 def get_paginated_json(url):
     next_url = url
@@ -32,8 +16,11 @@ class BitbucketExport:
         self.repository_name = repository_name
         self.repo_url = "https://api.bitbucket.org/2.0/repositories/" + repository_name
 
+    def get_repo_full_name(self):
+        return self.repository_name
+
     def get_issues(self):
-        print("Get all issues from Bitbucket's {}...".format(self.repository_name))
+        print("Get all bitbucket issues...")
         issues = list(get_paginated_json(self.repo_url + "/issues"))
         issues.sort(key=lambda x: x["id"])
         return issues
@@ -52,11 +39,29 @@ class BitbucketExport:
         data = get_request_content(self.repo_url + "/issues/" + str(issue_id) + "/attachments/" + attachment_name)
         return data
 
+    def get_simplified_pull_requests(self):
+        print("Get all simplified bitbucket pull requests...")
+        pull_requests = list(get_paginated_json(self.repo_url + "/pullrequests?state=MERGED&state=SUPERSEDED&state=OPEN&state=DECLINED"))
+        pull_requests.sort(key=lambda x: x["id"])
+        return pull_requests
+
+    def get_pull_requests_count(self):
+        pull_requests_page = get_request_json(self.repo_url + "/pullrequests?state=MERGED&state=SUPERSEDED&state=OPEN&state=DECLINED")
+        return pull_requests_page["size"]
+
+    def get_pull_request(self, pull_requests_id):
+        pull_request = get_request_json(self.repo_url + "/pullrequests/" + str(pull_requests_id))
+        return pull_request
+
     def get_pull_requests(self):
-        print("Get all pull requests from Bitbucket's {}...".format(self.repository_name))
-        issues = list(get_paginated_json(self.repo_url + "/pullrequests"))
-        issues.sort(key=lambda x: x["id"])
-        return issues
+        pull_requests_count = self.get_pull_requests_count()
+        print("Get all {} detailed bitbucket pull requests...".format(pull_requests_count))
+        pull_requests = []
+        for pull_request_id in range(1, pull_requests_count + 1):
+            if pull_request_id % 10 == 0:
+                print("{}/{}...".format(pull_request_id, pull_requests_count))
+            pull_requests.append(self.get_pull_request(pull_request_id))
+        return pull_requests
 
     def get_pull_requests_comments(self, pull_requests_id):
         comments = list(get_paginated_json(self.repo_url + "/pullrequests/" + str(pull_requests_id) + "/comments"))

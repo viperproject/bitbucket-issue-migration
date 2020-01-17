@@ -20,6 +20,7 @@ OPEN_ISSUE_OR_PULL_REQUEST_STATES = {
     "open",
     "new",
     "on hold",
+    "OPEN"
 }
 
 # Mapping of known Bitbucket to their corresponding GitHub repo
