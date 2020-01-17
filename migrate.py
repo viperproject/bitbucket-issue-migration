@@ -283,9 +283,9 @@ def construct_gissue_comments_for_activity(bactivity):
     comments = []
     for single_activity in bactivity:
         if "update" in single_activity or "approval" in single_activity:
-            if "update" in bactivity:
+            if "update" in single_activity:
                 activity_date = single_activity["update"]["date"]
-            elif "approval" in bactivity:
+            elif "approval" in single_activity:
                 activity_date = single_activity["approval"]["date"]
             comment = {
                 "body": replace_links_to_users(construct_gcomment_body_for_activity(single_activity)),
