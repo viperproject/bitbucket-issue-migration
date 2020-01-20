@@ -85,6 +85,7 @@ STATE_MAPPING = {
     "wontfix": "wontfix",
     "resolved": None,
     "new": None,
+    "closed": None,
     "DECLINED": "declined",
     "MERGED": "merged",
     "SUPERSEDED": "superseeded",

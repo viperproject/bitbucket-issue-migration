@@ -1,4 +1,4 @@
-from github import Github
+from github import Github, enable_console_debug_logging
 from github.GithubException import UnknownObjectException
 from time import sleep
 import requests
@@ -6,9 +6,11 @@ from .utils import get_request_json
 
 
 class GithubImport:
-    def __init__(self, access_token, repository):
+    def __init__(self, access_token, repository, debug=False):
+        if debug:
+            enable_console_debug_logging()
         self.access_token = access_token
-        self.github = Github(access_token)
+        self.github = Github(access_token, timeout=30, retry=3, per_page=100)
         try:
             self.repo = self.github.get_repo(repository)
         except UnknownObjectException:

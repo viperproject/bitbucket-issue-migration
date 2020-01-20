@@ -1,4 +1,7 @@
 from requests import Session
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
 from .utils import get_request_content, get_request_json
 
 
@@ -16,7 +19,18 @@ class BitbucketExport:
     def __init__(self, repository_name):
         self.repository_name = repository_name
         self.repo_url = "https://api.bitbucket.org/2.0/repositories/" + repository_name
-        self.session = Session()
+        # Share TCP connection and add a delay between failing requests
+        session = Session()
+        retry = Retry(
+            total=3,
+            read=3,
+            connect=3,
+            backoff_factor=0.3,
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        self.session = session
 
     def get_repo_full_name(self):
         return self.repository_name

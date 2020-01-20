@@ -117,16 +117,16 @@ def construct_gcomment_body(bcomment, bcomments_by_id):
         inline_data = bcomment["inline"]
         if inline_data["from"] is None:
             if inline_data["to"] is None:
-                sb.append("> Inline comment on `{}`".format(
+                sb.append("> Inline comment on `{}`\n".format(
                     inline_data["path"]
                 ))
             else:
-                sb.append("> Inline comment on line {} of `{}`".format(
+                sb.append("> Inline comment on line {} of `{}`\n".format(
                     inline_data["to"],
                     inline_data["path"]
                 ))
         else:
-            sb.append("> Inline comment on lines {}..{} of `{}`".format(
+            sb.append("> Inline comment on lines {}..{} of `{}`\n".format(
                 inline_data["from"],
                 inline_data["to"],
                 inline_data["path"]
@@ -425,7 +425,6 @@ def construct_gissue_from_bpull_request(bpull_request, bexport):
 
 def bitbucket_to_github(bexport, gimport, args):
     brepo_full_name = bexport.get_repo_full_name()
-    grepo_full_name = gimport.get_repo_full_name()
     issues_data = []
     attachment_gist_by_issue_id = {}
 
@@ -590,7 +589,7 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
     bexport = BitbucketExport(args.bitbucket_repository)
-    gimport = GithubImport(args.github_access_token, args.github_repository)
+    gimport = GithubImport(args.github_access_token, args.github_repository, debug=False)
     if args.check:
         check(bexport=bexport, gimport=gimport, args=args)
     else:
