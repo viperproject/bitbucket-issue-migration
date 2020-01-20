@@ -53,17 +53,42 @@ USER_MAPPING = {
 
 # We map bitbucket's issue "kind" to github "labels".
 KIND_MAPPING = {
-    "task": "enhancement",
-    "proposal": "suggestion",
+    "bug": "bug",
+    "enhancement": "enhancement",
+    "proposal": "proposal",
+    "task": "task",
+}
+
+# We map bitbucket's issue "priority" to github "labels".
+PRIORITY_MAPPING = {
+    "trivial": "trivial",
+    "minor": "minor",
+    "major": "major",
+    "critical": "critical",
+    "blocker": "blocker",
+}
+
+# We map bitbucket's issue "component" to github "labels".
+COMPONENT_MAPPING = {
+    "Parser": "parser",
+    "Consistency": "consistency",
+    "Triggers": "triggers",
+    "silver-obligations": "silver-obligations",
 }
 
 # The only github states are "open" and "closed".
 # Therefore, we map some bitbucket states to github "labels".
 STATE_MAPPING = {
-    "on hold": "suggestion",
+    "on hold": "on hold",
+    "invalid": "invalid",
+    "duplicate": "duplicate",
+    "wontfix": "wontfix",
+    "resolved": None,
+    "new": None,
     "DECLINED": "declined",
     "MERGED": "merged",
     "SUPERSEDED": "superseeded",
+    "OPEN": None,
 }
 
 # Bitbucket has several issue and pull request states.
@@ -72,7 +97,7 @@ OPEN_ISSUE_OR_PULL_REQUEST_STATES = {
     "open",
     "new",
     "on hold",
-    "OPEN"
+    "OPEN",
 }
 
 # Mapping of known Bitbucket to their corresponding GitHub repo

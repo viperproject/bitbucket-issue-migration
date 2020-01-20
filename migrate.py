@@ -40,19 +40,58 @@ def map_buser_to_guser(buser):
             return None
 
 
-def map_bstate_to_glabels(bissue, glabels):
+def map_bstate_to_glabels(bissue):
     bstate = bissue["state"]
     if bstate in config.STATE_MAPPING:
-        glabels.add(config.STATE_MAPPING[bstate])
+        label = config.STATE_MAPPING[bstate]
+        if label is None:
+            return []
+        else:
+            return [label]
+    else:
+        print("Warning: ignoring bitbucket issue state '{}'".format(bstate))
+        return []
 
 
-def map_bkind_to_glabels(bissue, glabels):
+def map_bpriority_to_glabels(bissue):
+    bpriority = bissue["priority"]
+    if bpriority in config.PRIORITY_MAPPING:
+        label = config.PRIORITY_MAPPING[bpriority]
+        if label is None:
+            return []
+        else:
+            return [label]
+    else:
+        print("Warning: ignoring bitbucket issue priority '{}'".format(bpriority))
+        return []
+
+
+def map_bkind_to_glabels(bissue):
     bkind = bissue["kind"]
     if bkind in config.KIND_MAPPING:
         label = config.KIND_MAPPING[bkind]
+        if label is None:
+            return []
+        else:
+            return [label]
     else:
-        label = bkind
-    glabels.add(label)
+        print("Warning: ignoring bitbucket issue kind '{}'".format(bkind))
+        return []
+
+
+def map_bcomponent_to_glabels(bissue):
+    if bissue["component"] is None:
+        return []
+    bcomponent = bissue["component"]["name"]
+    if bcomponent in config.COMPONENT_MAPPING:
+        label = config.COMPONENT_MAPPING[bcomponent]
+        if label is None:
+            return []
+        else:
+            return [label]
+    else:
+        print("Warning: ignoring bitbucket issue component '{}'".format(bcomponent))
+        return []
 
 
 def time_string_to_date_string(timestring):
@@ -74,6 +113,24 @@ def construct_gcomment_body(bcomment, bcomments_by_id):
     sb = []
     comment_created_on = time_string_to_date_string(bcomment["created_on"])
     sb.append("> **@" + bcomment["user"]["nickname"] + "** commented on " + comment_created_on + "\n")
+    if "inline" in bcomment:
+        inline_data = bcomment["inline"]
+        if inline_data["from"] is None:
+            if inline_data["to"] is None:
+                sb.append("> Inline comment on `{}`".format(
+                    inline_data["path"]
+                ))
+            else:
+                sb.append("> Inline comment on line {} of `{}`".format(
+                    inline_data["to"],
+                    inline_data["path"]
+                ))
+        else:
+            sb.append("> Inline comment on lines {}..{} of `{}`".format(
+                inline_data["from"],
+                inline_data["to"],
+                inline_data["path"]
+            ))
     sb.append("\n")
     if "parent" in bcomment:
         parent_comment = bcomments_by_id[bcomment["parent"]["id"]]
@@ -89,11 +146,9 @@ def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id):
     # Header
     created_on = time_string_to_date_string(bissue["created_on"])
     updated_on = time_string_to_date_string(bissue["updated_on"])
-    created_on_msg = "Created by **@" + bissue["reporter"]["nickname"] + "** on " + created_on
-    if created_on == updated_on:
-        sb.append("> " + created_on_msg + "\n")
-    else:
-        sb.append("> " + created_on_msg + ", last updated on " + updated_on + "\n")
+    sb.append("> Created by **@" + bissue["reporter"]["nickname"] + "** on " + created_on + "\n")
+    if created_on != updated_on:
+        sb.append("> Last updated on " + updated_on + "\n")
 
     # Content
     sb.append("\n")
@@ -130,19 +185,17 @@ def construct_gpull_request_body(bpull_request):
     if bpull_request["author"] is None:
         author_msg = ""
     else:
-        author_msg = "by **@" + bpull_request["author"]["nickname"] + " "
-    created_on_msg = " **Pull request** :twisted_rightwards_arrows: created " + author_msg + "on " + created_on
-    if created_on == updated_on:
-        sb.append("> " + created_on_msg + "\n")
-    else:
-        sb.append("> " + created_on_msg + ", last updated on " + updated_on + "\n")
+        author_msg = "by **@" + bpull_request["author"]["nickname"] + "** "
+    sb.append(">  **Pull request** :twisted_rightwards_arrows: created " + author_msg + "on " + created_on + "\n")
+    if created_on != updated_on:
+        sb.append("> last updated on " + updated_on + "\n")
 
     if bpull_request["participants"]:
         sb.append(">\n")
         sb.append("> Participants:\n")
         sb.append(">\n")
         for participant in bpull_request["participants"]:
-            sb.append("> * [**{}**]".format(participant["user"]["nickname"]))
+            sb.append("> * **@{}**".format(participant["user"]["nickname"]))
             if participant["role"] == "REVIEWER":
                 sb.append(" (reviewer)")
             if participant["approved"]:
@@ -151,17 +204,17 @@ def construct_gpull_request_body(bpull_request):
 
     sb.append(">\n")
     source = bpull_request["source"]
-    sb.append("> Source: repository `{}`, hash {}, branch `{}`\n".format(
-        source["repository"]["full_name"] if source["repository"] is not None else "(none)",
-        source["commit"]["hash"] if source["commit"] is not None else "(none)",
-        source["branch"]["name"] if source["branch"] is not None else "(none)",
+    sb.append("> Source: {}@{}, `{}`\n".format(
+        source["repository"]["full_name"] if source["repository"] is not None else "(no repo)",
+        source["commit"]["hash"] if source["commit"] is not None else "(no hash)",
+        source["branch"]["name"] if source["branch"] is not None else "(no branch)",
     ))
 
     destination = bpull_request["destination"]
-    sb.append("> Destination: repository `{}`, hash {}, branch `{}`\n".format(
-        destination["repository"]["full_name"] if destination["repository"] is not None else "(none)",
-        destination["commit"]["hash"] if destination["commit"] is not None else "(none)",
-        destination["branch"]["name"] if destination["branch"] is not None else "(none)",
+    sb.append("> Destination: {}@{}, `{}`\n".format(
+        destination["repository"]["full_name"] if destination["repository"] is not None else "(no repo)",
+        destination["commit"]["hash"] if destination["commit"] is not None else "(no hash)",
+        destination["branch"]["name"] if destination["branch"] is not None else "(no branch)",
     ))
 
     sb.append(">\n")
@@ -179,46 +232,40 @@ def construct_gpull_request_body(bpull_request):
 def construct_gcomment_body_for_change(bchange):
     created_on = time_string_to_date_string(bchange["created_on"])
     sb = []
+    blacklist = ["content", "title", "assignee_account_id"]
     for changed_key, change in bchange["changes"].items():
-        sb.append("> **@{}** changed `{}` from `{}` to `{}` on {}\n".format(
-            bchange["user"]["nickname"],
-            changed_key,
-            change["old"],
-            change["new"],
-            created_on
-        ))
+        if changed_key not in blacklist:
+            sb.append("> **@{}** changed `{}` from `{}` to `{}` on {}\n".format(
+                bchange["user"]["nickname"],
+                changed_key,
+                change["old"] if change["old"] else "(none)",
+                change["new"] if change["new"] else "(none)",
+                created_on
+            ))
     return "".join(sb)
 
 
-def construct_gcomment_body_for_activity(bactivity):
-    assert "comment" not in bactivity, str(bactivity)
-    sb = []
-
-    if "update" in bactivity:
-        update_activity = bactivity["update"]
-        on_date = time_string_to_date_string(update_activity["date"])
-        sb.append("> **@{}** changed the status to `{}` on {}".format(
+def construct_gcomment_body_for_update_activity(update_activity):
+    on_date = time_string_to_date_string(update_activity["date"])
+    if update_activity["author"] is None:
+        return "> the status has been changed to `{}` on {}".format(
+            update_activity["state"],
+            on_date
+        )
+    else:
+        return "> **@{}** changed the status to `{}` on {}".format(
             update_activity["author"]["nickname"],
             update_activity["state"],
             on_date
-        ))
-
-    if "approval" in bactivity:
-        approval_activity = bactivity["approval"]
-        on_date = time_string_to_date_string(approval_activity["date"])
-        sb.append("> :heavy_check_mark: **@{}** approved the pull request on {}".format(
-            approval_activity["user"]["nickname"],
-            on_date
-        ))
-
-    return "".join(sb)
+        )
 
 
-def construct_gissue_labels(bissue):
-    glabels = set()
-    map_bkind_to_glabels(bissue=bissue, glabels=glabels)
-    map_bstate_to_glabels(bissue=bissue, glabels=glabels)
-    return list(glabels)
+def construct_gcomment_body_for_approval_activity(approval_activity):
+    on_date = time_string_to_date_string(approval_activity["date"])
+    return "> **@{}** approved :heavy_check_mark: the pull request on {}".format(
+        approval_activity["user"]["nickname"],
+        on_date
+    )
 
 
 def construct_gissue_title_for_pull_request(bpull_request):
@@ -230,12 +277,17 @@ def construct_gissue_comments(bcomments):
 
     for comment_id, bcomment in bcomments.items():
         # Skip empty comments
-        if bcomment["content"] is not None:
-            comment = {
-                "body": replace_links_to_users(construct_gcomment_body(bcomment, bcomments)),
-                "created_at": convert_date(bcomment["created_on"])
-            }
-            comments.append(comment)
+        if bcomment["content"]["raw"] is None:
+            continue
+        # Skip deleted comments
+        if "deleted" in bcomment and bcomment["deleted"]:
+            continue
+        # Constrct comment
+        comment = {
+            "body": replace_links_to_users(construct_gcomment_body(bcomment, bcomments)),
+            "created_at": convert_date(bcomment["created_on"])
+        }
+        comments.append(comment)
 
     comments.sort(key=lambda x: x["created_at"])
     return comments
@@ -271,24 +323,30 @@ def construct_gist_from_bissue_attachments(bissue, bexport):
 def construct_gissue_comments_for_changes(bchanges):
     comments = []
     for bchange in bchanges:
-        comment = {
-            "body": replace_links_to_users(construct_gcomment_body_for_change(bchange)),
-            "created_at": convert_date(bchange["created_on"])
-        }
-        comments.append(comment)
+        body = replace_links_to_users(construct_gcomment_body_for_change(bchange))
+        # Skip empty comments
+        if body:
+            comment = {
+                "body": body,
+                "created_at": convert_date(bchange["created_on"])
+            }
+            comments.append(comment)
     return comments
 
 
 def construct_gissue_comments_for_activity(bactivity):
     comments = []
     for single_activity in bactivity:
-        if "update" in single_activity or "approval" in single_activity:
-            if "update" in single_activity:
-                activity_date = single_activity["update"]["date"]
-            elif "approval" in single_activity:
-                activity_date = single_activity["approval"]["date"]
+        if "approval" in single_activity:
+            if "approval" in single_activity:
+                approval_activity = single_activity["approval"]
+                activity_date = approval_activity["date"]
+                body = construct_gcomment_body_for_approval_activity(approval_activity)
+            else:
+                # comment activityor update
+                continue
             comment = {
-                "body": replace_links_to_users(construct_gcomment_body_for_activity(single_activity)),
+                "body": replace_links_to_users(body),
                 "created_at": convert_date(activity_date)
             }
             comments.append(comment)
@@ -311,6 +369,14 @@ def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id):
     comments += construct_gissue_comments_for_changes(bchanges)
     comments.sort(key=lambda x: x["created_at"])
 
+    # Construct labels
+    labels = (
+        map_bkind_to_glabels(bissue) +
+        map_bstate_to_glabels(bissue) +
+        map_bpriority_to_glabels(bissue) +
+        map_bcomponent_to_glabels(bissue)
+    )
+
     return {
         "issue": {
             "title": bissue["title"],
@@ -319,7 +385,7 @@ def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id):
             "updated_at": convert_date(bissue["updated_on"]),
             "assignee": map_buser_to_guser(bissue["assignee"]),
             "closed": map_bstate_to_gstate(bissue) == "closed",
-            "labels": construct_gissue_labels(bissue),
+            "labels": list(set(labels)),
         },
         "comments": comments
     }
@@ -340,6 +406,9 @@ def construct_gissue_from_bpull_request(bpull_request, bexport):
     comments += construct_gissue_comments_for_activity(bactivity)
     comments.sort(key=lambda x: x["created_at"])
 
+    # Construct labels
+    labels = ["pull request"] + map_bstate_to_glabels(bpull_request)
+
     return {
         "issue": {
             "title": construct_gissue_title_for_pull_request(bpull_request),
@@ -348,27 +417,28 @@ def construct_gissue_from_bpull_request(bpull_request, bexport):
             "updated_at": convert_date(bpull_request["updated_on"]),
             "assignee": map_buser_to_guser(bpull_request["author"]),
             "closed": map_bstate_to_gstate(bpull_request) == "closed",
-            "labels": construct_gissue_labels(bpull_request),
+            "labels": list(set(labels)),
         },
         "comments": comments
     }
 
 
 def bitbucket_to_github(bexport, gimport, args):
-    repo_full_name = gimport.get_repo_full_name()
+    brepo_full_name = bexport.get_repo_full_name()
+    grepo_full_name = gimport.get_repo_full_name()
     issues_data = []
     attachment_gist_by_issue_id = {}
 
     # Retrieve data
     bissues = bexport.get_issues()
     bpull_requests = bexport.get_pull_requests()
-    assert repo_full_name in config.KNOWN_ISSUES_COUNT_MAPPING
-    assert config.KNOWN_ISSUES_COUNT_MAPPING[repo_full_name] == len(bissues)
-    pull_requests_id_offset = config.KNOWN_ISSUES_COUNT_MAPPING[repo_full_name]
+    assert brepo_full_name in config.KNOWN_ISSUES_COUNT_MAPPING
+    assert config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name] == len(bissues)
+    pull_requests_id_offset = config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name]
 
     # Migrate attachments
-    print("Migrate bitbucket attachments to github...")
     if not args.skip_attachments:
+        print("Migrate bitbucket attachments to github...")
         for bissue in bissues:
             issue_id = bissue["id"]
             print("Migrate attachments for bitbucket issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
@@ -378,7 +448,7 @@ def bitbucket_to_github(bexport, gimport, args):
                 gist = gimport.get_or_create_gist_by_description(gist_data)
                 attachment_gist_by_issue_id[issue_id] = gist
     else:
-        print("SKIPPED")
+        print("Warning: migration of bitbucket attachments to github has been skipped.")
 
     # Prepare issues
     print("Prepare github issues...")
@@ -397,15 +467,17 @@ def bitbucket_to_github(bexport, gimport, args):
     # Upload github issues
     print("Upload github issues...")
     existing_gissues = gimport.get_issues()
-    for existing_gissue in existing_gissues:
-        issue_id = existing_gissue.id
+    for issue_id in range(1, len(existing_gissues) + 1):
+        existing_gissue = existing_gissues[issue_id - 1]
+        assert existing_gissue.number == issue_id
         print("Upload github issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
         if issue_id > len(issues_data):
-            print("Error: existing github issue #{} should not exist.")
+            print("Error: existing github issue #{} should not exist.".format(issue_id))
+            existing_gissue.edit(state="closed")
         else:
-            gimport.update_issue_with_comments(issues_data[issue_id - 1])
+            gimport.update_issue_with_comments(existing_gissue, issues_data[issue_id - 1])
 
-    for issue_id in range(existing_gissues.totalCount, len(issues_data) + 1):
+    for issue_id in range(len(existing_gissues) + 1, len(issues_data) + 1):
         print("Create github issue #{}...".format(issue_id))
         gissue_data = issues_data[issue_id - 1]
         gimport.create_issue_with_comments(gissue_data)

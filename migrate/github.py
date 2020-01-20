@@ -21,10 +21,12 @@ class GithubImport:
         return self.github.rate_limiting[0]
 
     def get_issues_count(self):
-        return self.get_issues().totalCount
+        return self.repo.get_issues(state="all").totalCount
 
     def get_issues(self):
-        return self.repo.get_issues(state="all")
+        issues = list(self.repo.get_issues(state="all"))
+        issues.sort(key=lambda x: x.number)
+        return issues
 
     def get_gist_by_description(self, description):
         return next(
@@ -47,7 +49,7 @@ class GithubImport:
             gist.edit(gist_data["description"], gist_data["files"])
         return gist
 
-    def create_issue_with_comments(self, issue, comments):
+    def create_issue_with_comments(self, issue_data):
         """
         Push a single issue to GitHub.
         Importing via GitHub's normal Issue API quickly triggers anti-abuse rate
@@ -55,12 +57,11 @@ class GithubImport:
         https://gist.github.com/jonmagic/5282384165e0f86ef105
         https://github.com/nicoddemus/bitbucket_issue_migration/issues/1
         """
-        issue_data = {"issue": issue, "comments": comments}
         url = "https://api.github.com/repos/{repo}/import/issues".format(
             repo=self.get_repo_full_name())
         headers = {
-            "Accept": "application/vnd.github.golden-comet-preview+json",
-            "Authorization": "token {}".format(self.access_token)
+            "Authorization": "token {}".format(self.access_token),
+            "Accept": "application/vnd.github.golden-comet-preview+json"
         }
         res = requests.post(url, json=issue_data, headers=headers)
         if not res.ok:
@@ -72,7 +73,7 @@ class GithubImport:
             print("Waiting...")
             sleep(delay)
             delay = min(5, delay + 1)
-            import_data = get_request_json(import_data["url"])
+            import_data = get_request_json(import_data["url"], headers=headers)
             import_status = import_data["status"]
 
     def update_issue_comments(self, issue, comments_data):
@@ -102,6 +103,6 @@ class GithubImport:
             body=meta["body"],
             labels=meta["labels"],
             state="closed" if meta["closed"] else "open",
-            assignees=[meta["assignee"]] if "assignee" in meta else []
+            assignees=[] if meta["assignee"] is None else [meta["assignee"]]
         )
         self.update_issue_comments(issue, issue_data["comments"])
