@@ -1,12 +1,14 @@
 #!/usr/bin/python
 import sys
 import re
-from github import Github
-from github.GithubException import UnknownObjectException
+from migrate.github import GithubImport
 import argparse
 import difflib
 import config
 
+
+# stores all user mentions
+user_mentions = []
 
 ISSUE_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/issues*/(\d+)[^\s()\[\]{{}}]*'
                            .format(repos="|".join(config.KNOWN_REPO_MAPPING)))
@@ -45,12 +47,14 @@ def replace_links_to_prs(body, args):
     return PR_LINK_RE.sub(replace_pr_link, body)
 
 
-MENTION_RE = re.compile(r'(?:^|(?<=[^\w]))@([a-zA-Z0-9_-]+)\b')
+MENTION_RE = re.compile(r'(?:^|(?<=[^\w]))@([a-zA-Z0-9_\-]+|{[a-zA-Z0-9_\-:]+})')
 def replace_links_to_users(body, args=None):
     # replace @mentions with users specified in config:
     # TODO: remove the 'ignore_' before doing the real migration
     def replace_user(match):
         buser = match.group(1)
+        if buser not in user_mentions:
+            user_mentions.append(buser)
         if buser not in config.USER_MAPPING:
             # leave username unchanged:
             return '@' + 'ignore_' + buser
@@ -104,15 +108,22 @@ def update_links_in_issue(issue, args):
         update_links_in_comment(comment, args)
 
 
-def update_links_in_issues(repo, args):
-    issues = repo.get_issues(state="all")
+def update_links_in_issues(g, args):
+    issues = g.get_issues()
     for issue in issues:
         update_links_in_issue(issue, args)
 
 
-def update_links(repo, args):
+def update_links(g, args):
     # iterate over issues and comments and update them:
-    update_links_in_issues(repo, args)
+    update_links_in_issues(g, args)
+
+
+def print_user_mentions():
+    print('#' * 10 + " User Mentions: " + '#' * 10)
+    for user in user_mentions:
+        print(user)
+    print('#' * 50)
 
 
 def create_parser():
@@ -144,15 +155,10 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
-    g = Github(args.access_token)
+    g = GithubImport(args.access_token, args.repository, debug=False)
 
-    try:
-        repo = g.get_repo(args.repository)
-    except UnknownObjectException:
-        print("Failed to get the repository '{}'".format(args.repository))
-        sys.exit(1)
-
-    update_links(repo, args)
+    update_links(g, args)
+    print_user_mentions()
 
 if __name__ == "__main__":
     main()
