@@ -28,7 +28,7 @@ USER_MAPPING = {
     #"arshavir": "arshavir"
     #"a2scale": "a2scale"
     #"fabiopakk": "fabiopakk"
-    #"meilers": "meilers"
+    #"meilers": "marcoeilers"
     #"vakaras": "vakaras"
     #"alexander_summers": "alexander_summers"
     #"RKor": "RKor"
@@ -37,7 +37,7 @@ USER_MAPPING = {
     #"streun": "streun"
     #"juhaszu": "juhaszu"
     #"seraiah": "seraiah"
-    #"fpoli_eth": "fpoli_eth"
+    #"fpoli_eth": "fpoli"
     #"robinsierra": "robinsierra"
     #"fhahn": "fhahn"
     #"nilsbecker_": "nilsbecker_"
@@ -48,7 +48,10 @@ USER_MAPPING = {
     #"arquintl": "arquintl"
     #"sahil_rishi": "sahil_rishi"
     #"dohrau": "dohrau"
-    #"krantikiran": "krantikiran"
+    #"krantikiran": "krantikiran",
+    #"HMulder": "",
+    #"Ansgar92": "",
+    #"robmeier": "",
 }
 
 # We map bitbucket's issue "kind" to github "labels".
