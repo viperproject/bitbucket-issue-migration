@@ -17,18 +17,6 @@ def map_bstate_to_gstate(bissue):
         return "closed"
 
 
-def map_bassignee_to_gassignees(bissue):
-    bassignee = bissue["assignee"]
-    if bassignee is None:
-        return []
-    else:
-        nickname = bassignee["nickname"]
-        if nickname in config.USER_MAPPING:
-            return [config.USER_MAPPING[nickname]]
-        else:
-            return []
-
-
 def map_buser_to_guser(buser):
     if buser is None:
         return None
@@ -109,27 +97,54 @@ def convert_date(bb_date):
     raise RuntimeError("Could not parse date: {}".format(bb_date))
 
 
-def construct_gcomment_body(bcomment, bcomments_by_id):
+def construct_gcomment_body(bcomment, bcomments_by_id, bexport=None, bpull_request=None):
     sb = []
     comment_created_on = time_string_to_date_string(bcomment["created_on"])
     sb.append("> **@" + bcomment["user"]["nickname"] + "** commented on " + comment_created_on + "\n")
     if "inline" in bcomment:
         inline_data = bcomment["inline"]
+        source_commitish = bpull_request["source"]["branch"] if bpull_request["source"]["commit"] is None else bpull_request["source"]["commit"]["hash"]
+        source_repo = bexport.get_repo_full_name() if bpull_request["source"]["repository"] is None else bpull_request["source"]["repository"]["full_name"]
+        file_path = inline_data["path"]
+        file_name = file_path.split("/")[-1]
         if inline_data["from"] is None:
             if inline_data["to"] is None:
                 sb.append("> Inline comment on `{}`\n".format(
-                    inline_data["path"]
+                    file_path
+                ))
+                sb.append("> https://bitbucket.org/{}/src/{}/{}#{}\n".format(
+                    source_repo,
+                    source_commitish,
+                    file_path,
+                    file_name
                 ))
             else:
+                to_line = inline_data["to"]
                 sb.append("> Inline comment on line {} of `{}`\n".format(
-                    inline_data["to"],
-                    inline_data["path"]
+                    to_line,
+                    file_path
+                ))
+                sb.append("> https://bitbucket.org/{}/src/{}/{}#{}-{}\n".format(
+                    source_repo,
+                    source_commitish,
+                    file_path,
+                    file_name,
+                    to_line
                 ))
         else:
+            from_line = inline_data["from"]
+            to_line = inline_data["to"]
             sb.append("> Inline comment on lines {}..{} of `{}`\n".format(
-                inline_data["from"],
-                inline_data["to"],
-                inline_data["path"]
+                from_line,
+                to_line,
+                file_path
+            ))
+            sb.append("> https://bitbucket.org/{}/src/{}/{}#{}-{}\n".format(
+                source_repo,
+                source_commitish,
+                file_path,
+                file_name,
+                from_line
             ))
     sb.append("\n")
     if "parent" in bcomment:
@@ -176,7 +191,7 @@ def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id):
     return "".join(sb)
 
 
-def construct_gpull_request_body(bpull_request):
+def construct_gpull_request_body(bpull_request, bexport):
     sb = []
 
     # Header
@@ -188,7 +203,7 @@ def construct_gpull_request_body(bpull_request):
         author_msg = "by **@" + bpull_request["author"]["nickname"] + "** "
     sb.append(">  **Pull request** :twisted_rightwards_arrows: created " + author_msg + "on " + created_on + "\n")
     if created_on != updated_on:
-        sb.append("> last updated on " + updated_on + "\n")
+        sb.append("> Last updated on " + updated_on + "\n")
 
     if bpull_request["participants"]:
         sb.append(">\n")
@@ -204,21 +219,32 @@ def construct_gpull_request_body(bpull_request):
 
     sb.append(">\n")
     source = bpull_request["source"]
-    sb.append("> Source: {}@{}, `{}`\n".format(
-        source["repository"]["full_name"] if source["repository"] is not None else "(no repo)",
-        source["commit"]["hash"] if source["commit"] is not None else "(no hash)",
-        source["branch"]["name"] if source["branch"] is not None else "(no branch)",
-    ))
+    if source["repository"] is None and source["commit"] is None:
+        sb.append("> Source: branch [`{branch}`](https://bitbucket.org/{repo}/src/{branch})\n".format(
+            branch=source["branch"]["name"],
+            repo=bexport.get_repo_full_name()
+        ))
+    else:
+        sb.append("> Source: [`{repo}`](https://bitbucket.org/{repo}), [`{branch}`](https://bitbucket.org/{repo}/src/{branch}), [{hash}](https://bitbucket.org/{repo}/commits/{hash})\n".format(
+            repo=source["repository"]["full_name"],
+            branch=source["branch"]["name"],
+            hash=source["commit"]["hash"]
+        ))
 
     destination = bpull_request["destination"]
-    sb.append("> Destination: {}@{}, `{}`\n".format(
-        destination["repository"]["full_name"] if destination["repository"] is not None else "(no repo)",
-        destination["commit"]["hash"] if destination["commit"] is not None else "(no hash)",
-        destination["branch"]["name"] if destination["branch"] is not None else "(no branch)",
-    ))
+    if destination["repository"] is None and destination["commit"] is None:
+        sb.append("> Destination: branch [`{branch}`](https://bitbucket.org/{repo}/src/{branch})\n".format(
+            branch=destination["branch"]["name"],
+            repo=bexport.get_repo_full_name()
+        ))
+    else:
+        sb.append("> Destination: [`{repo}`](https://bitbucket.org/{repo}), [`{branch}`](https://bitbucket.org/{repo}/src/{branch}), [{hash}](https://bitbucket.org/{repo}/commits/{hash})\n".format(
+            repo=destination["repository"]["full_name"],
+            branch=destination["branch"]["name"],
+            hash=destination["commit"]["hash"]
+        ))
 
     sb.append(">\n")
-    destination = bpull_request["destination"]
     sb.append("> State: **`{}`**\n".format(bpull_request["state"]))
 
     # Content
@@ -272,7 +298,7 @@ def construct_gissue_title_for_pull_request(bpull_request):
     return "[PR] " + bpull_request["title"]
 
 
-def construct_gissue_comments(bcomments):
+def construct_gissue_comments(bcomments, bexport=None, bpull_request=None):
     comments = []
 
     for comment_id, bcomment in bcomments.items():
@@ -284,7 +310,7 @@ def construct_gissue_comments(bcomments):
             continue
         # Constrct comment
         comment = {
-            "body": replace_links_to_users(construct_gcomment_body(bcomment, bcomments)),
+            "body": replace_links_to_users(construct_gcomment_body(bcomment, bcomments, bexport, bpull_request)),
             "created_at": convert_date(bcomment["created_on"])
         }
         comments.append(comment)
@@ -397,12 +423,12 @@ def construct_gissue_from_bpull_request(bpull_request, bexport):
     bactivity = bexport.get_pull_request_activity(pull_request_id)
 
     issue_body = replace_links_to_users(
-        construct_gpull_request_body(bpull_request)
+        construct_gpull_request_body(bpull_request, bexport)
     )
 
     # Construct comments
     comments = []
-    comments += construct_gissue_comments(bcomments)
+    comments += construct_gissue_comments(bcomments, bexport, bpull_request)
     comments += construct_gissue_comments_for_activity(bactivity)
     comments.sort(key=lambda x: x["created_at"])
 
@@ -533,7 +559,7 @@ def check(bexport, gimport, args):
             print("Checking bitbucket issue #{}...".format(bissue_id))
         if bissue["assignee"] is not None:
             bnicknames.add(bissue["assignee"]["nickname"])
-        for bcomment in bexport.get_issue_comments(bissue_id):
+        for bcomment in bexport.get_issue_comments(bissue_id).values():
             bnicknames.add(bcomment["user"]["nickname"])
     for bpull_request in bpull_requests:
         bpull_request_id = bpull_request["id"]
@@ -545,8 +571,22 @@ def check(bexport, gimport, args):
             bnicknames.add(bparticipant["user"]["nickname"])
         for breviewer in bpull_request["reviewers"]:
             bnicknames.add(breviewer["nickname"])
-        for bcomment in bexport.get_issue_comments(bissue_id):
+        for bcomment in bexport.get_issue_comments(bissue_id).values():
             bnicknames.add(bcomment["user"]["nickname"])
+        if (bpull_request["source"]["repository"] is None) != (bpull_request["source"]["commit"] is None):
+            print("Info: source repository is '{}', but commit is '{}'".format(
+                bpull_request["source"]["repository"],
+                bpull_request["source"]["commit"]
+            ))
+        if (bpull_request["destination"]["repository"] is None) != (bpull_request["destination"]["commit"] is None):
+            print("Info: destination repository is '{}', but commit is '{}'".format(
+                bpull_request["destination"]["repository"],
+                bpull_request["destination"]["commit"]
+            ))
+        if bpull_request["source"]["branch"] is None:
+            print("Info: source branch is None")
+        if bpull_request["destination"]["branch"] is None:
+            print("Info: destination branch is None")
     for nickname in bnicknames:
         if nickname not in config.USER_MAPPING:
             print("Warning: bitbucket user '{}' is not configured in USER_MAPPING.".format(nickname))
