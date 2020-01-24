@@ -52,10 +52,11 @@ def replace_links_to_users(body):
     # TODO: remove the 'ignore_' before doing the real migration
     def replace_user(match):
         buser = match.group(1)
-        if buser not in config.USER_MAPPING:
+        guser = lookup_user(buser)
+        if guser is None:
             # leave username unchanged:
             return '@' + 'ignore_' + buser
-        return '@' + 'ignore_' + config.USER_MAPPING[buser]
+        return '@' + guser
     return MENTION_RE.sub(replace_user, body)
 
 
@@ -67,15 +68,18 @@ def map_bstate_to_gstate(bissue):
         return "closed"
 
 
+def lookup_user(buser_nickname):
+    if buser_nickname not in config.USER_MAPPING:
+        return None
+    return 'ignore_' + config.USER_MAPPING[buser_nickname]
+
+
 def map_buser_to_guser(buser):
     if buser is None:
         return None
     else:
         nickname = buser["nickname"]
-        if nickname in config.USER_MAPPING:
-            return config.USER_MAPPING[nickname]
-        else:
-            return None
+        return lookup_user(nickname)
 
 
 def map_bstate_to_glabels(bissue):
