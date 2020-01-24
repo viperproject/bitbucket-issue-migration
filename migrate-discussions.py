@@ -210,10 +210,10 @@ def construct_gpull_request_body(bpull_request, bexport):
 
     destination = bpull_request["destination"]
     sb.append("> Destination: branch [`{branch}`](https://bitbucket.org/{repo}/src/{branch}), [{hash}](https://bitbucket.org/{repo}/commits/{hash})\n".format(
-        repo=destination["repository"]["full_name"],
-        branch=destination["branch"]["name"],
-        hash=destination["commit"]["hash"]
-    ))
+            repo=destination["repository"]["full_name"],
+            branch=destination["branch"]["name"],
+            hash=destination["commit"]["hash"]
+        ))
 
     if bpull_request["merge_commit"] is not None:
         sb.append("> Marge commit: [{hash}](https://bitbucket.org/{repo}/commits/{hash})\n".format(
