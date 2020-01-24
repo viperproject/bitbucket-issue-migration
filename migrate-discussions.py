@@ -6,7 +6,57 @@ from github import InputFileContent
 import config
 from migrate.bitbucket import BitbucketExport
 from migrate.github import GithubImport
-from linking import replace_links_to_users
+
+
+ISSUE_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/issues*/(\d+)[^\s()\[\]{{}}]*'
+                           .format(repos="|".join(config.KNOWN_REPO_MAPPING)))
+def replace_links_to_issues(body):
+    # replace links to other issues by an explicit link to GitHub (instead of "#<id>").
+    # This avoids that "#<id>" in a Markdown link will be interpreted as a relative link
+    def replace_issue_link(match):
+        brepo = match.group(1)
+        issue_nr = match.group(2)
+        if brepo not in config.KNOWN_REPO_MAPPING:
+            # leave link unchanged:
+            return match.group(0)
+        grepo = config.KNOWN_REPO_MAPPING[brepo]
+        return r'https://github.com/{repo}/issues/{issue_nr}'.format(
+            repo=grepo, issue_nr=issue_nr)
+    return ISSUE_LINK_RE.sub(replace_issue_link, body)
+
+
+PR_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/pull-requests*/(\d+)[^\s()\[\]{{}}]*'
+                           .format(repos="|".join(config.KNOWN_REPO_MAPPING)))
+def replace_links_to_prs(body):
+    # Bitbucket uses separate numbering for issues and pull requests
+    # However, GitHub uses the same numbering.
+    # Assuming that pull requests get imported after issues, the IDs of pull requests need to be incremented by the
+    # number of issues (in the corresponding repo)
+    def replace_pr_link(match):
+        brepo = match.group(1)
+        bpr_nr = int(match.group(2))
+        if brepo not in config.KNOWN_REPO_MAPPING or brepo not in config.KNOWN_ISSUES_COUNT_MAPPING:
+            # leave link unchanged:
+            return match.group(0)
+        grepo = config.KNOWN_REPO_MAPPING[brepo]
+        issues_count = config.KNOWN_ISSUES_COUNT_MAPPING[brepo]
+        gpr_number = bpr_nr + issues_count
+        return r'https://github.com/{repo}/pull/{gpr_number}'.format(
+            repo=grepo, gpr_number=gpr_number)
+    return PR_LINK_RE.sub(replace_pr_link, body)
+
+
+MENTION_RE = re.compile(r'(?:^|(?<=[^\w]))@([a-zA-Z0-9_\-]+|{[a-zA-Z0-9_\-:]+})')
+def replace_links_to_users(body):
+    # replace @mentions with users specified in config:
+    # TODO: remove the 'ignore_' before doing the real migration
+    def replace_user(match):
+        buser = match.group(1)
+        if buser not in config.USER_MAPPING:
+            # leave username unchanged:
+            return '@' + 'ignore_' + buser
+        return '@' + 'ignore_' + config.USER_MAPPING[buser]
+    return MENTION_RE.sub(replace_user, body)
 
 
 def map_bstate_to_gstate(bissue):
@@ -82,6 +132,14 @@ def map_bcomponent_to_glabels(bissue):
         return []
 
 
+# maps the raw content of issues, pull requests, and comments to new content for GitHub by replacing links
+# and user mentions
+def map_content(content):
+    tmp = replace_links_to_issues(content)
+    tmp = replace_links_to_prs(tmp)
+    return replace_links_to_users(tmp)
+
+
 def time_string_to_date_string(timestring):
     datetime = parser.parse(timestring)
     return datetime.strftime("%Y-%m-%d %H:%M")
@@ -100,7 +158,7 @@ def convert_date(bb_date):
 def construct_gcomment_body(bcomment, bcomments_by_id, bexport=None, bpull_request=None):
     sb = []
     comment_created_on = time_string_to_date_string(bcomment["created_on"])
-    sb.append("> **@" + bcomment["user"]["nickname"] + "** commented on " + comment_created_on + "\n")
+    sb.append("> **@" + map_buser_to_guser(bcomment["user"]) + "** commented on " + comment_created_on + "\n")
     if "inline" in bcomment:
         inline_data = bcomment["inline"]
         file_path = inline_data["path"]
@@ -127,8 +185,8 @@ def construct_gcomment_body(bcomment, bcomments_by_id, bexport=None, bpull_reque
     if "parent" in bcomment:
         parent_comment = bcomments_by_id[bcomment["parent"]["id"]]
         if parent_comment["content"]["raw"] is not None:
-            sb.append("> {}\n\n".format(parent_comment["content"]["raw"]))
-    sb.append("" if bcomment["content"]["raw"] is None else bcomment["content"]["raw"])
+            sb.append("> {}\n\n".format(map_content(parent_comment["content"]["raw"])))
+    sb.append("" if bcomment["content"]["raw"] is None else map_content(bcomment["content"]["raw"]))
     return "".join(sb)
 
 
@@ -138,13 +196,13 @@ def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id):
     # Header
     created_on = time_string_to_date_string(bissue["created_on"])
     updated_on = time_string_to_date_string(bissue["updated_on"])
-    sb.append("> Created by **@" + bissue["reporter"]["nickname"] + "** on " + created_on + "\n")
+    sb.append("> Created by **@" + map_buser_to_guser(bissue["reporter"]) + "** on " + created_on + "\n")
     if created_on != updated_on:
         sb.append("> Last updated on " + updated_on + "\n")
 
     # Content
     sb.append("\n")
-    sb.append(bissue["content"]["raw"])
+    sb.append(map_content(bissue["content"]["raw"]))
     sb.append("\n")
 
     # Attachments
@@ -177,7 +235,7 @@ def construct_gpull_request_body(bpull_request, bexport):
     if bpull_request["author"] is None:
         author_msg = ""
     else:
-        author_msg = "by **@" + bpull_request["author"]["nickname"] + "** "
+        author_msg = "by **@" + map_buser_to_guser(bpull_request["author"]) + "** "
     sb.append(">  **Pull request** :twisted_rightwards_arrows: created " + author_msg + "on " + created_on + "\n")
     if created_on != updated_on:
         sb.append("> Last updated on " + updated_on + "\n")
@@ -187,7 +245,7 @@ def construct_gpull_request_body(bpull_request, bexport):
         sb.append("> Participants:\n")
         sb.append(">\n")
         for participant in bpull_request["participants"]:
-            sb.append("> * **@{}**".format(participant["user"]["nickname"]))
+            sb.append("> * **@{}**".format(map_buser_to_guser(participant["user"])))
             if participant["role"] == "REVIEWER":
                 sb.append(" (reviewer)")
             if participant["approved"]:
@@ -226,7 +284,7 @@ def construct_gpull_request_body(bpull_request, bexport):
 
     # Content
     sb.append("\n")
-    sb.append(bpull_request["description"])
+    sb.append(map_content(bpull_request["description"]))
     sb.append("\n")
 
     return "".join(sb)
@@ -239,7 +297,7 @@ def construct_gcomment_body_for_change(bchange):
     for changed_key, change in bchange["changes"].items():
         if changed_key not in blacklist:
             sb.append("> **@{}** changed `{}` from `{}` to `{}` on {}\n".format(
-                bchange["user"]["nickname"],
+                map_buser_to_guser(bchange["user"]),
                 changed_key,
                 change["old"] if change["old"] else "(none)",
                 change["new"] if change["new"] else "(none)",
@@ -257,7 +315,7 @@ def construct_gcomment_body_for_update_activity(update_activity):
         )
     else:
         return "> **@{}** changed the status to `{}` on {}".format(
-            update_activity["author"]["nickname"],
+            map_buser_to_guser(update_activity["author"]),
             update_activity["state"],
             on_date
         )
@@ -266,7 +324,7 @@ def construct_gcomment_body_for_update_activity(update_activity):
 def construct_gcomment_body_for_approval_activity(approval_activity):
     on_date = time_string_to_date_string(approval_activity["date"])
     return "> **@{}** approved :heavy_check_mark: the pull request on {}".format(
-        approval_activity["user"]["nickname"],
+        map_buser_to_guser(approval_activity["user"]),
         on_date
     )
 
@@ -287,7 +345,7 @@ def construct_gissue_comments(bcomments, bexport=None, bpull_request=None):
             continue
         # Constrct comment
         comment = {
-            "body": replace_links_to_users(construct_gcomment_body(bcomment, bcomments, bexport, bpull_request)),
+            "body": construct_gcomment_body(bcomment, bcomments, bexport, bpull_request),
             "created_at": convert_date(bcomment["created_on"])
         }
         comments.append(comment)
@@ -326,7 +384,7 @@ def construct_gist_from_bissue_attachments(bissue, bexport):
 def construct_gissue_comments_for_changes(bchanges):
     comments = []
     for bchange in bchanges:
-        body = replace_links_to_users(construct_gcomment_body_for_change(bchange))
+        body = construct_gcomment_body_for_change(bchange)
         # Skip empty comments
         if body:
             comment = {
@@ -341,18 +399,17 @@ def construct_gissue_comments_for_activity(bactivity):
     comments = []
     for single_activity in bactivity:
         if "approval" in single_activity:
-            if "approval" in single_activity:
-                approval_activity = single_activity["approval"]
-                activity_date = approval_activity["date"]
-                body = construct_gcomment_body_for_approval_activity(approval_activity)
-            else:
-                # comment activityor update
-                continue
-            comment = {
-                "body": replace_links_to_users(body),
-                "created_at": convert_date(activity_date)
-            }
-            comments.append(comment)
+            approval_activity = single_activity["approval"]
+            activity_date = approval_activity["date"]
+            body = construct_gcomment_body_for_approval_activity(approval_activity)
+        else:
+            # comment activity or update
+            continue
+        comment = {
+            "body": body,
+            "created_at": convert_date(activity_date)
+        }
+        comments.append(comment)
     return comments
 
 
@@ -362,9 +419,7 @@ def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id):
     bcomments = bexport.get_issue_comments(issue_id)
     bchanges = bexport.get_issue_changes(issue_id)
 
-    issue_body = replace_links_to_users(
-        construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id)
-    )
+    issue_body = construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id)
 
     # Construct comments
     comments = []
@@ -399,9 +454,7 @@ def construct_gissue_from_bpull_request(bpull_request, bexport):
     bcomments = bexport.get_pull_request_comments(pull_request_id)
     bactivity = bexport.get_pull_request_activity(pull_request_id)
 
-    issue_body = replace_links_to_users(
-        construct_gpull_request_body(bpull_request, bexport)
-    )
+    issue_body = construct_gpull_request_body(bpull_request, bexport)
 
     # Construct comments
     comments = []
