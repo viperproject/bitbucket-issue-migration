@@ -6,6 +6,7 @@ from github import InputFileContent
 import config
 from migrate.bitbucket import BitbucketExport
 from migrate.github import GithubImport
+from commit_map.map import CommitMap
 
 
 ISSUE_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/issues*/(\d+)[^\s()\[\]{{}}]*'
@@ -230,7 +231,7 @@ def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id):
     return "".join(sb)
 
 
-def construct_gpull_request_body(bpull_request, bexport):
+def construct_gpull_request_body(bpull_request, bexport, cmap):
     sb = []
 
     # Header
@@ -264,18 +265,27 @@ def construct_gpull_request_body(bpull_request, bexport):
             repo=bexport.get_repo_full_name()
         ))
     else:
-        sb.append("> Source: [`{repo}`](https://bitbucket.org/{repo}), [`{branch}`](https://bitbucket.org/{repo}/src/{branch}), [{hash}](https://bitbucket.org/{repo}/commits/{hash})\n".format(
+        source_bhash = source["commit"]["hash"]
+        source_ghash = cmap.convert_commit_hash(source_bhash)
+        if source_ghash is None:
+            print("Error: could not map mercurial commit '{}' (source of a PR) to git.".format(source_bhash))
+
+        sb.append("> Source: [`{repo}`](https://bitbucket.org/{repo}), [`{branch}`](https://bitbucket.org/{repo}/src/{branch}), [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
             repo=source["repository"]["full_name"],
             branch=source["branch"]["name"],
-            hash=source["commit"]["hash"]
+            ghash=source_ghash
         ))
 
     destination = bpull_request["destination"]
-    sb.append("> Destination: branch [`{branch}`](https://bitbucket.org/{repo}/src/{branch}), [{hash}](https://bitbucket.org/{repo}/commits/{hash})\n".format(
-            repo=destination["repository"]["full_name"],
-            branch=destination["branch"]["name"],
-            hash=destination["commit"]["hash"]
-        ))
+    destination_bhash = destination["commit"]["hash"]
+    destination_ghash = cmap.convert_commit_hash(destination_bhash)
+    if source_ghash is None:
+        print("Error: could not map mercurial commit '{}' (destination of a PR) to git.".format(source_bhash))
+    sb.append("> Destination: branch [`{branch}`](https://bitbucket.org/{repo}/src/{branch}), [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
+        repo=destination["repository"]["full_name"],
+        branch=destination["branch"]["name"],
+        ghash=destination_ghash
+    ))
 
     if bpull_request["merge_commit"] is not None:
         sb.append("> Marge commit: [{hash}](https://bitbucket.org/{repo}/commits/{hash})\n".format(
@@ -453,12 +463,12 @@ def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id):
     }
 
 
-def construct_gissue_from_bpull_request(bpull_request, bexport):
+def construct_gissue_from_bpull_request(bpull_request, bexport, cmap):
     pull_request_id = bpull_request["id"]
     bcomments = bexport.get_pull_request_comments(pull_request_id)
     bactivity = bexport.get_pull_request_activity(pull_request_id)
 
-    issue_body = construct_gpull_request_body(bpull_request, bexport)
+    issue_body = construct_gpull_request_body(bpull_request, bexport, cmap)
 
     # Construct comments
     comments = []
@@ -483,7 +493,7 @@ def construct_gissue_from_bpull_request(bpull_request, bexport):
     }
 
 
-def bitbucket_to_github(bexport, gimport, args):
+def bitbucket_to_github(bexport, gimport, args, cmap):
     brepo_full_name = bexport.get_repo_full_name()
     issues_data = []
     attachment_gist_by_issue_id = {}
@@ -520,7 +530,7 @@ def bitbucket_to_github(bexport, gimport, args):
     for bpull_request in bpull_requests:
         issue_id = bpull_request["id"] + pull_requests_id_offset
         print("Prepare github issue #{} from bitbucket pull request...".format(issue_id))
-        gissue = construct_gissue_from_bpull_request(bpull_request, bexport)
+        gissue = construct_gissue_from_bpull_request(bpull_request, bexport, cmap)
         issues_data.append(gissue)
 
     # Upload github issues
@@ -649,6 +659,11 @@ def create_parser():
         required=True
     )
     parser.add_argument(
+        "-c", "--commit-map",
+        help="Path to the folder containing the mapping of mercurial commits to git commits.",
+        required=True
+    )
+    parser.add_argument(
         "--skip-attachments",
         help="Skip the migration of attachments (development only)",
         action='store_true'
@@ -666,10 +681,13 @@ def main():
     args = parser.parse_args()
     bexport = BitbucketExport(args.bitbucket_repository)
     gimport = GithubImport(args.github_access_token, args.github_repository, debug=False)
+    cmap = CommitMap(args.commit_map)
+    print("Load mapping of mercurial commits to git")
+    cmap.load_from_disk()
     if args.check:
         check(bexport=bexport, gimport=gimport, args=args)
     else:
-        bitbucket_to_github(bexport=bexport, gimport=gimport, args=args)
+        bitbucket_to_github(bexport=bexport, gimport=gimport, args=args, cmap=cmap)
 
 
 if __name__ == "__main__":
