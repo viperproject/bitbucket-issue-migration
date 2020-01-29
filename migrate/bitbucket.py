@@ -16,11 +16,13 @@ def get_paginated_json(url, session=None):
 
 
 class BitbucketExport:
-    def __init__(self, repository_name):
+    def __init__(self, repository_name, username=None, app_password=None):
         self.repository_name = repository_name
         self.repo_url = "https://api.bitbucket.org/2.0/repositories/" + repository_name
         # Share TCP connection and add a delay between failing requests
         session = Session()
+        if username is not None and app_password is not None:
+            session.auth = (username, app_password)
         retry = Retry(
             total=3,
             read=3,
