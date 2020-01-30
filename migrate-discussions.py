@@ -83,6 +83,12 @@ def map_buser_to_guser(buser):
         return lookup_user(nickname)
 
 
+def map_brepo_to_grepo(brepo):
+    if brepo not in config.KNOWN_REPO_MAPPING:
+        return None
+    return config.KNOWN_REPO_MAPPING[brepo]
+
+
 def map_bstate_to_glabels(bissue):
     bstate = bissue["state"]
     if bstate in config.STATE_MAPPING:
@@ -260,37 +266,54 @@ def construct_gpull_request_body(bpull_request, bexport, cmap):
     sb.append(">\n")
     source = bpull_request["source"]
     if source["repository"] is None and source["commit"] is None:
-        sb.append("> Source: branch [`{branch}`](https://bitbucket.org/{repo}/src/{branch})\n".format(
-            branch=source["branch"]["name"],
-            repo=bexport.get_repo_full_name()
+        source_brepo = bexport.get_repo_full_name()
+        source_bbranch = source["branch"]["name"]
+        source_grepo = map_brepo_to_grepo(source_brepo)
+        source_gbranch = cmap.convert_branch_name(source_bbranch)
+        sb.append("> Source: branch [`{branch}`](https://github.com/{grepo}/tree/{gbranch})\n".format(
+            branch=source_gbranch,
+            grepo=source_grepo
         ))
     else:
+        source_brepo = source["repository"]["full_name"]
+        source_bbranch = source["branch"]["name"]
         source_bhash = source["commit"]["hash"]
+        source_grepo = map_brepo_to_grepo(source_brepo)
+        source_gbranch = cmap.convert_branch_name(source_bbranch, source_brepo)
         source_ghash = cmap.convert_commit_hash(source_bhash)
         if source_ghash is None:
             print("Error: could not map mercurial commit '{}' (source of a PR) to git.".format(source_bhash))
-
-        sb.append("> Source: [`{repo}`](https://bitbucket.org/{repo}), [`{branch}`](https://bitbucket.org/{repo}/src/{branch}), [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
-            repo=source["repository"]["full_name"],
-            branch=source["branch"]["name"],
+        sb.append("> Source: branch [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch}), [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
+            grepo=source_grepo,
+            gbranch=source_gbranch,
             ghash=source_ghash
         ))
 
     destination = bpull_request["destination"]
+    destination_brepo = destination["repository"]["full_name"]
+    destination_bbranch = destination["branch"]["name"]
     destination_bhash = destination["commit"]["hash"]
+    destination_grepo = map_brepo_to_grepo(destination_brepo)
+    destination_gbranch = cmap.convert_branch_name(destination_bbranch, destination_brepo)
     destination_ghash = cmap.convert_commit_hash(destination_bhash)
+    if destination_brepo != bexport.get_repo_full_name():
+        print("Error: the destination of a pull request, '{}', is not '{}'.".format(destination_brepo, bexport.get_repo_full_name()))
     if source_ghash is None:
         print("Error: could not map mercurial commit '{}' (destination of a PR) to git.".format(source_bhash))
-    sb.append("> Destination: branch [`{branch}`](https://bitbucket.org/{repo}/src/{branch}), [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
-        repo=destination["repository"]["full_name"],
-        branch=destination["branch"]["name"],
+    sb.append("> Destination: branch [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch}), [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
+        grepo=destination_grepo,
+        branch=destination_gbranch,
         ghash=destination_ghash
     ))
 
     if bpull_request["merge_commit"] is not None:
-        sb.append("> Marge commit: [{hash}](https://bitbucket.org/{repo}/commits/{hash})\n".format(
-            repo=bexport.get_repo_full_name(),
-            hash=bpull_request["merge_commit"]["hash"]
+        merge_brepo = bexport.get_repo_full_name()
+        merge_bhash = bpull_request["merge_commit"]["hash"]
+        merge_grepo = map_brepo_to_grepo(merge_brepo)
+        merge_ghash = cmap.convert_commit_hash(merge_bhash)
+        sb.append("> Marge commit: [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
+            grepo=merge_grepo,
+            ghash=merge_ghash
         ))
 
     sb.append(">\n")

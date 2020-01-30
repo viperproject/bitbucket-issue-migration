@@ -39,8 +39,11 @@ class CommitMap:
         except KeyError:
             return None
 
-    def convert_branch_name(self, repo_name, branch_name):
+    def convert_branch_name(self, branch_name, repo_name=None):
         """Convert a branch of a bitbucket repo to the name of a github branch.
         """
-        # TODO
-        return branch_name
+        if repo_name is None:
+            return branch_name
+        else:
+            # TODO
+            repo_name + "/" + branch_name
