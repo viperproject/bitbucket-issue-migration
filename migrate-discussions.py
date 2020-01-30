@@ -502,20 +502,34 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap):
     # Construct labels
     labels = ["pull request"] + map_bstate_to_glabels(bpull)
 
-    issue_data = {
-        "issue": {
-            "title": construct_gissue_title_for_pull(bpull),
-            "body": issue_body,
-            "created_at": convert_date(bpull["created_on"]),
-            "updated_at": convert_date(bpull["updated_on"]),
-            "assignee": map_buser_to_guser(bpull["author"]),
-            "closed": map_bstate_to_gstate(bpull) == "closed",
-            "labels": list(set(labels)),
-        },
-        "comments": comments
-    }
+    is_closed = map_bstate_to_gstate(bpull) == "closed"
 
-    return {"type": "issue", "data": issue_data}
+    if is_closed:
+        issue_data = {
+            "issue": {
+                "title": construct_gissue_title_for_pull(bpull),
+                "body": issue_body,
+                "created_at": convert_date(bpull["created_on"]),
+                "updated_at": convert_date(bpull["updated_on"]),
+                "assignee": map_buser_to_guser(bpull["author"]),
+                "closed": is_closed,
+                "labels": list(set(labels)),
+            },
+            "comments": comments
+        }
+        return {"type": "issue", "data": issue_data}
+    else:
+        pull_data = {
+            "pull": {
+                "title": construct_gissue_title_for_pull(bpull),
+                "body": issue_body,
+                "assignees": [map_buser_to_guser(bpull["author"])],
+                "closed": is_closed,
+                "labels": list(set(labels)),
+            },
+            "comments": comments
+        }
+        return {"type": "pull", "data": pull_data}
 
 
 def bitbucket_to_github(bexport, gimport, args, cmap):
@@ -707,6 +721,10 @@ def create_parser():
         action='store_true'
     )
     parser.add_argument(
+        "--dev",
+        help="Do something special (development only)"
+    )
+    parser.add_argument(
         "--check",
         help="Check the configuration",
         action='store_true'
@@ -722,6 +740,8 @@ def main():
     cmap = CommitMap(args.commit_map)
     print("Load mapping of mercurial commits to git...")
     cmap.load_from_disk()
+    if args.dev is not None:
+        
     if args.check:
         check(bexport=bexport, gimport=gimport, args=args)
     else:
