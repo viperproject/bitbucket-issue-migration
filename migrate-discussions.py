@@ -9,10 +9,10 @@ from migrate.github import GithubImport
 from commit_map.map import CommitMap
 
 
-ISSUE_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/issues*/(\d+)[^\s()\[\]{{}}]*'
+EXPLICIT_ISSUE_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/issues*/(\d+)[^\s()\[\]{{}}]*'
                            .format(repos="|".join(config.KNOWN_REPO_MAPPING)))
-def replace_links_to_issues(body):
-    # replace links to other issues by an explicit link to GitHub (instead of "#<id>").
+def replace_explicit_links_to_issues(body):
+    # replace explicit links to other issues by an explicit link to GitHub (instead of "#<id>").
     # This avoids that "#<id>" in a Markdown link will be interpreted as a relative link
     def replace_issue_link(match):
         brepo = match.group(1)
@@ -23,12 +23,38 @@ def replace_links_to_issues(body):
         grepo = config.KNOWN_REPO_MAPPING[brepo]
         return r'https://github.com/{repo}/issues/{issue_nr}'.format(
             repo=grepo, issue_nr=issue_nr)
-    return ISSUE_LINK_RE.sub(replace_issue_link, body)
+    return EXPLICIT_ISSUE_LINK_RE.sub(replace_issue_link, body)
 
 
-PR_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/pull-requests*/(\d+)[^\s()\[\]{{}}]*'
+# test for all known repo names (separated by a single whitespace from issue)
+# the disjunction ensures that text between squared brackets is not captured
+IMPLICIT_ISSUE_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?issue #(\d+)/i'
+                           .format(repo_names="|".join([repo.split('/')[-1] + " "
+                                                        for repo in config.KNOWN_REPO_MAPPING])))
+def replace_implicit_links_to_issues(body, args):
+    def replace_issue_link(match):
+        repo_name = match.group(1)
+        issue_nr = match.group(2)
+        if issue_nr is None:
+            # first disjuncted term was matched, i.e. squared brackets
+            # leave unchanged:
+            return match.group(0)
+        grepo = None
+        for brepo in config.KNOWN_REPO_MAPPING:
+            if repo_name == brepo.split('/')[-1] + " ":
+                grepo = config.KNOWN_REPO_MAPPING[brepo]
+                break
+        if grepo is None:
+            # interpret as same repo link
+            grepo = args.github_repository
+        return r'https://github.com/{repo}/issues/{issue_nr}'.format(
+            repo=grepo, issue_nr=issue_nr)
+    return IMPLICIT_ISSUE_LINK_RE.sub(replace_issue_link, body)
+
+
+EXPLICIT_PR_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/pull-requests*/(\d+)[^\s()\[\]{{}}]*'
                            .format(repos="|".join(config.KNOWN_REPO_MAPPING)))
-def replace_links_to_prs(body):
+def replace_explicit_links_to_prs(body):
     # Bitbucket uses separate numbering for issues and pull requests
     # However, GitHub uses the same numbering.
     # Assuming that pull requests get imported after issues, the IDs of pull requests need to be incremented by the
@@ -44,7 +70,41 @@ def replace_links_to_prs(body):
         gpr_number = bpr_nr + issues_count
         return r'https://github.com/{repo}/pull/{gpr_number}'.format(
             repo=grepo, gpr_number=gpr_number)
-    return PR_LINK_RE.sub(replace_pr_link, body)
+    return EXPLICIT_PR_LINK_RE.sub(replace_pr_link, body)
+
+
+# test for all known repo names (separated by a single whitespace from issue)
+# the disjunction ensures that text between squared brackets is not captured
+IMPLICIT_PR_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?pull request #(\d+)/i'
+                           .format(repo_names="|".join([repo.split('/')[-1] + " "
+                                                        for repo in config.KNOWN_REPO_MAPPING])))
+def replace_implicit_links_to_prs(body, args):
+    def replace_issue_link(match):
+        repo_name = match.group(1)
+        bpr_nr = match.group(2)
+        if bpr_nr is None:
+            # first disjuncted term was matched, i.e. squared brackets
+            # leave unchanged:
+            return match.group(0)
+        brepo = None
+        grepo = None
+        for repo in config.KNOWN_REPO_MAPPING:
+            if repo_name == repo.split('/')[-1] + " ":
+                brepo = repo
+                grepo = config.KNOWN_REPO_MAPPING[repo]
+                break
+        if brepo is None or grepo is None:
+            # interpret as same repo link
+            brepo = args.bitbucket_repository
+            grepo = args.github_repository
+        if brepo not in config.KNOWN_ISSUES_COUNT_MAPPING:
+            # leave unchanged:
+            return match.group(0)
+        issues_count = config.KNOWN_ISSUES_COUNT_MAPPING[brepo]
+        gpr_number = bpr_nr + issues_count
+        return r'https://github.com/{repo}/pull/{gpr_number}'.format(
+            repo=grepo, gpr_number=gpr_number)
+    return IMPLICIT_PR_LINK_RE.sub(replace_issue_link, body)
 
 
 MENTION_RE = re.compile(r'(?:^|(?<=[^\w]))@([a-zA-Z0-9_\-]+|{[a-zA-Z0-9_\-:]+})')
@@ -63,7 +123,7 @@ def replace_links_to_users(body):
 
 def map_bstate_to_gstate(bissue):
     bstate = bissue["state"]
-    if bstate in config.OPEN_ISSUE_OR_pull_STATES:
+    if bstate in config.OPEN_ISSUE_OR_PULL_REQUEST_STATES:
         return "open"
     else:
         return "closed"
@@ -71,7 +131,7 @@ def map_bstate_to_gstate(bissue):
 
 def lookup_user(buser_nickname):
     if buser_nickname not in config.USER_MAPPING:
-        return None
+        return 'ignore_' + buser_nickname
     return 'ignore_' + config.USER_MAPPING[buser_nickname]
 
 
@@ -145,9 +205,11 @@ def map_bcomponent_to_glabels(bissue):
 
 # maps the raw content of issues, pull requests, and comments to new content for GitHub by replacing links
 # and user mentions
-def map_content(content):
-    tmp = replace_links_to_issues(content)
-    tmp = replace_links_to_prs(tmp)
+def map_content(content, args):
+    tmp = replace_explicit_links_to_issues(content)
+    tmp = replace_implicit_links_to_issues(tmp, args)
+    tmp = replace_explicit_links_to_prs(tmp)
+    tmp = replace_implicit_links_to_prs(tmp, args)
     return replace_links_to_users(tmp)
 
 
@@ -166,7 +228,7 @@ def convert_date(bb_date):
     raise RuntimeError("Could not parse date: {}".format(bb_date))
 
 
-def construct_gcomment_body(bcomment, bcomments_by_id, bexport=None, bpull=None):
+def construct_gcomment_body(bcomment, bcomments_by_id, args):
     sb = []
     comment_created_on = time_string_to_date_string(bcomment["created_on"])
     sb.append("> **@" + map_buser_to_guser(bcomment["user"]) + "** commented on " + comment_created_on + "\n")
@@ -196,12 +258,12 @@ def construct_gcomment_body(bcomment, bcomments_by_id, bexport=None, bpull=None)
     if "parent" in bcomment:
         parent_comment = bcomments_by_id[bcomment["parent"]["id"]]
         if parent_comment["content"]["raw"] is not None:
-            sb.append("> {}\n\n".format(map_content(parent_comment["content"]["raw"])))
-    sb.append("" if bcomment["content"]["raw"] is None else map_content(bcomment["content"]["raw"]))
+            sb.append("> {}\n\n".format(map_content(parent_comment["content"]["raw"], args)))
+    sb.append("" if bcomment["content"]["raw"] is None else map_content(bcomment["content"]["raw"], args))
     return "".join(sb)
 
 
-def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id):
+def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id, args):
     sb = []
 
     # Header
@@ -213,7 +275,7 @@ def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id):
 
     # Content
     sb.append("\n")
-    sb.append(map_content(bissue["content"]["raw"]))
+    sb.append(map_content(bissue["content"]["raw"], args))
     sb.append("\n")
 
     # Attachments
@@ -237,7 +299,7 @@ def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id):
     return "".join(sb)
 
 
-def construct_gpull_body(bpull, bexport, cmap):
+def construct_gpull_request_body(bpull, bexport, cmap, args):
     sb = []
 
     # Header
@@ -272,7 +334,8 @@ def construct_gpull_body(bpull, bexport, cmap):
         source_gbranch = cmap.convert_branch_name(source_bbranch)
         sb.append("> Source: branch [`{branch}`](https://github.com/{grepo}/tree/{gbranch})\n".format(
             branch=source_gbranch,
-            grepo=source_grepo
+            grepo=source_grepo,
+            gbranch=source_gbranch
         ))
     else:
         source_brepo = source["repository"]["full_name"]
@@ -302,7 +365,7 @@ def construct_gpull_body(bpull, bexport, cmap):
         print("Error: could not map mercurial commit '{}' (destination of a PR) to git.".format(source_bhash))
     sb.append("> Destination: branch [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch}), [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
         grepo=destination_grepo,
-        branch=destination_gbranch,
+        gbranch=destination_gbranch,
         ghash=destination_ghash
     ))
 
@@ -321,7 +384,7 @@ def construct_gpull_body(bpull, bexport, cmap):
 
     # Content
     sb.append("\n")
-    sb.append(map_content(bpull["description"]))
+    sb.append(map_content(bpull["description"], args))
     sb.append("\n")
 
     return "".join(sb)
@@ -370,7 +433,7 @@ def construct_gissue_title_for_pull(bpull):
     return "[PR] " + bpull["title"]
 
 
-def construct_gissue_comments(bcomments, bexport=None, bpull=None):
+def construct_gissue_comments(bcomments, args):
     comments = []
 
     for comment_id, bcomment in bcomments.items():
@@ -382,7 +445,7 @@ def construct_gissue_comments(bcomments, bexport=None, bpull=None):
             continue
         # Constrct comment
         comment = {
-            "body": construct_gcomment_body(bcomment, bcomments, bexport, bpull),
+            "body": construct_gcomment_body(bcomment, bcomments, args),
             "created_at": convert_date(bcomment["created_on"])
         }
         comments.append(comment)
@@ -450,17 +513,17 @@ def construct_gissue_comments_for_activity(bactivity):
     return comments
 
 
-def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id):
+def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id, args):
     issue_id = bissue["id"]
     battachments = bexport.get_issue_attachments(issue_id)
     bcomments = bexport.get_issue_comments(issue_id)
     bchanges = bexport.get_issue_changes(issue_id)
 
-    issue_body = construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id)
+    issue_body = construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id, args)
 
     # Construct comments
     comments = []
-    comments += construct_gissue_comments(bcomments)
+    comments += construct_gissue_comments(bcomments, args)
     comments += construct_gissue_comments_for_changes(bchanges)
     comments.sort(key=lambda x: x["created_at"])
 
@@ -486,16 +549,16 @@ def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id):
     }
 
 
-def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap):
+def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
     pull_id = bpull["id"]
     bcomments = bexport.get_pull_comments(pull_id)
     bactivity = bexport.get_pull_activity(pull_id)
 
-    issue_body = construct_gpull_body(bpull, bexport, cmap)
+    issue_body = construct_gpull_request_body(bpull, bexport, cmap, args)
 
     # Construct comments
     comments = []
-    comments += construct_gissue_comments(bcomments, bexport, bpull)
+    comments += construct_gissue_comments(bcomments, args)
     comments += construct_gissue_comments_for_activity(bactivity)
     comments.sort(key=lambda x: x["created_at"])
 
@@ -532,7 +595,7 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap):
         return {"type": "pull", "data": pull_data}
 
 
-def bitbucket_to_github(bexport, gimport, args, cmap):
+def bitbucket_to_github(bexport, gimport, cmap, args):
     brepo_full_name = bexport.get_repo_full_name()
     issues_and_pulls = []
     attachment_gist_by_issue_id = {}
@@ -563,13 +626,13 @@ def bitbucket_to_github(bexport, gimport, args, cmap):
     for bissue in bissues:
         issue_id = bissue["id"]
         print("Prepare github issue #{} from bitbucket issue...".format(issue_id))
-        gissue = construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id)
+        gissue = construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id, args)
         issues_and_pulls.append({"type": "issue", "data": gissue})
 
     for bpull in bpulls:
         issue_id = bpull["id"] + pulls_id_offset
         print("Prepare github issue #{} from bitbucket pull request...".format(issue_id))
-        gissue_or_gpull = construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap)
+        gissue_or_gpull = construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args)
         issues_and_pulls.append(gissue_or_gpull)
 
     # Upload github issues
@@ -745,7 +808,7 @@ def main():
     if args.check:
         check(bexport=bexport, gimport=gimport, args=args)
     else:
-        bitbucket_to_github(bexport=bexport, gimport=gimport, args=args, cmap=cmap)
+        bitbucket_to_github(bexport=bexport, gimport=gimport, cmap=cmap, args=args)
 
 
 if __name__ == "__main__":
