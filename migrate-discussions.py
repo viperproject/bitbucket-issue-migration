@@ -804,12 +804,11 @@ def main():
     print("Load mapping of mercurial commits to git...")
     cmap.load_from_disk()
     if args.dev is not None:
-        
+        pass
     if args.check:
         check(bexport=bexport, gimport=gimport, args=args)
     else:
         bitbucket_to_github(bexport=bexport, gimport=gimport, cmap=cmap, args=args)
-
 
 if __name__ == "__main__":
     main()
