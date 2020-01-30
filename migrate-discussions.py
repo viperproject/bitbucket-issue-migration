@@ -589,6 +589,8 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
                 "assignees": [map_buser_to_guser(bpull["author"])],
                 "closed": is_closed,
                 "labels": list(set(labels)),
+                "base": "TODO",
+                "head": "TODO"
             },
             "comments": comments
         }
@@ -655,7 +657,7 @@ def bitbucket_to_github(bexport, gimport, cmap, args):
                 print("Create github issue #{}...".format(number))
                 gimport.create_issue_with_comments(data)
         elif type == "pull":
-            if number in existing_gissues:
+            if number in existing_gpulls:
                 print("Update github pull request #{}...".format(number))
                 gimport.update_issue_with_comments(existing_gpulls[number], data)
             else:
@@ -804,7 +806,19 @@ def main():
     print("Load mapping of mercurial commits to git...")
     cmap.load_from_disk()
     if args.dev is not None:
-        pass
+        number = int(args.dev)
+        bpull = bexport.get_pull(number)
+        existing_gpulls = gimport.get_pulls()
+        issue_or_pull = construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args)
+        assert issue_or_pull["type"] == "pull"
+        data = issue_or_pull["data"]
+        if number in existing_gpulls:
+            print("Update github pull request #{}...".format(number))
+            gimport.update_pull_with_comments(existing_gpulls[number], data)
+        else:
+            print("Create github pull request #{}...".format(number))
+            gimport.create_pull_with_comments(data)
+        return
     if args.check:
         check(bexport=bexport, gimport=gimport, args=args)
     else:
