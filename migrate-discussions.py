@@ -121,6 +121,28 @@ def replace_links_to_users(body):
     return MENTION_RE.sub(replace_user, body)
 
 
+# test for hex characters of at least length 7 starting and ending at a word boundary:
+COMMIT_HASH_RE = re.compile(r'\[.*?\]|\b([0-9A-Fa-f]{7,})\b')
+def replace_commit_hashes(body, cmap):
+    def replace_commit_hash(match):
+        hg_hash = match.group(1)
+        if hg_hash is None:
+            # first disjuncted term was matched, i.e. squared brackets
+            # leave unchanged:
+            return match.group(0)
+        brepo = cmap.get_repo_name(hg_hash)
+        git_hash = cmap.convert_commit_hash(hg_hash)
+        if brepo is None or git_hash is None or brepo not in config.KNOWN_REPO_MAPPING:
+            # unknown commit
+            print("commit {} cannot be converted".format(hg_hash))
+            # leave unchanged:
+            return match.group(0)
+        grepo = config.KNOWN_REPO_MAPPING[brepo]
+        return r'https://github.com/{grepo}/commit/{git_hash}'.format(
+            grepo=grepo, git_hash=git_hash)
+    return IMPLICIT_PR_LINK_RE.sub(replace_commit_hash, body)
+
+
 def map_bstate_to_gstate(bissue):
     bstate = bissue["state"]
     if bstate in config.OPEN_ISSUE_OR_PULL_REQUEST_STATES:
@@ -205,12 +227,13 @@ def map_bcomponent_to_glabels(bissue):
 
 # maps the raw content of issues, pull requests, and comments to new content for GitHub by replacing links
 # and user mentions
-def map_content(content, args):
+def map_content(content, cmap, args):
     tmp = replace_explicit_links_to_issues(content)
     tmp = replace_implicit_links_to_issues(tmp, args)
     tmp = replace_explicit_links_to_prs(tmp)
     tmp = replace_implicit_links_to_prs(tmp, args)
-    return replace_links_to_users(tmp)
+    tmp = replace_links_to_users(tmp)
+    return replace_commit_hashes(tmp, cmap)
 
 
 def time_string_to_date_string(timestring):
@@ -361,8 +384,8 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
     destination_ghash = cmap.convert_commit_hash(destination_bhash)
     if destination_brepo != bexport.get_repo_full_name():
         print("Error: the destination of a pull request, '{}', is not '{}'.".format(destination_brepo, bexport.get_repo_full_name()))
-    if source_ghash is None:
-        print("Error: could not map mercurial commit '{}' (destination of a PR) to git.".format(source_bhash))
+    if destination_ghash is None:
+        print("Error: could not map mercurial commit '{}' (destination of a PR) to git.".format(destination_bhash))
     sb.append("> Destination: branch [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch}), [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
         grepo=destination_grepo,
         gbranch=destination_gbranch,
