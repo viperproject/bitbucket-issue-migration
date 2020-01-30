@@ -71,11 +71,13 @@ class CommitMap:
                 return self.maps[repo_name][hg_hash]
         return None
 
-    def convert_branch_name(self, branch_name, default_repo=None, repo_name=None):
+    def convert_branch_name(self, branch, repo=None, default_repo=None):
         """Convert a branch of a bitbucket repo to the name of a github branch.
         """
-        if repo_name is None:
-            return branch_name
+        if repo == default_repo:
+            if branch == "default":
+                return "master"
+            else:
+                return branch
         else:
-            # TODO
-            repo_name + "/" + branch_name
+            return repo + "/" + branch

@@ -354,7 +354,7 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
         source_brepo = bexport.get_repo_full_name()
         source_bbranch = source["branch"]["name"]
         source_grepo = map_brepo_to_grepo(source_brepo)
-        source_gbranch = cmap.convert_branch_name(source_bbranch)
+        source_gbranch = cmap.convert_branch_name(branch=source_bbranch)
         sb.append("> Source: branch [`{branch}`](https://github.com/{grepo}/tree/{gbranch})\n".format(
             branch=source_gbranch,
             grepo=source_grepo,
@@ -365,7 +365,7 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
         source_bbranch = source["branch"]["name"]
         source_bhash = source["commit"]["hash"]
         source_grepo = map_brepo_to_grepo(source_brepo)
-        source_gbranch = cmap.convert_branch_name(source_bbranch, source_brepo)
+        source_gbranch = cmap.convert_branch_name(branch=source_bbranch, repo=source_brepo, default_repo=bexport.get_repo_full_name())
         source_ghash = cmap.convert_commit_hash(source_bhash)
         if source_ghash is None:
             print("Error: could not map mercurial commit '{}' (source of a PR) to git.".format(source_bhash))
@@ -380,7 +380,7 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
     destination_bbranch = destination["branch"]["name"]
     destination_bhash = destination["commit"]["hash"]
     destination_grepo = map_brepo_to_grepo(destination_brepo)
-    destination_gbranch = cmap.convert_branch_name(destination_bbranch, destination_brepo)
+    destination_gbranch = cmap.convert_branch_name(branch=destination_bbranch, repo=destination_brepo, default_repo=bexport.get_repo_full_name())
     destination_ghash = cmap.convert_commit_hash(destination_bhash)
     if destination_brepo != bexport.get_repo_full_name():
         print("Error: the destination of a pull request, '{}', is not '{}'.".format(destination_brepo, bexport.get_repo_full_name()))
@@ -450,10 +450,6 @@ def construct_gcomment_body_for_approval_activity(approval_activity):
         map_buser_to_guser(approval_activity["user"]),
         on_date
     )
-
-
-def construct_gissue_title_for_pull(bpull):
-    return "[PR] " + bpull["title"]
 
 
 def construct_gissue_comments(bcomments, cmap, args):
@@ -588,36 +584,39 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
     # Construct labels
     labels = ["pull request"] + map_bstate_to_glabels(bpull)
 
+    # Compute the github head/base name
     is_closed = map_bstate_to_gstate(bpull) == "closed"
-
     if is_closed:
-        issue_data = {
-            "issue": {
-                "title": construct_gissue_title_for_pull(bpull),
-                "body": issue_body,
-                "created_at": convert_date(bpull["created_on"]),
-                "updated_at": convert_date(bpull["updated_on"]),
-                "assignee": map_buser_to_guser(bpull["author"]),
-                "closed": is_closed,
-                "labels": list(set(labels)),
-            },
-            "comments": comments
-        }
-        return {"type": "issue", "data": issue_data}
+        base_branch = cmap.convert_commit_hash(bpull["destination"]["commit"]["hash"])
+        if bpull["source"]["commit"] is not None:
+            head_branch = cmap.convert_commit_hash(bpull["source"]["commit"]["hash"])
+        else:
+            head_branch = base_branch
     else:
-        pull_data = {
-            "pull": {
-                "title": construct_gissue_title_for_pull(bpull),
-                "body": issue_body,
-                "assignees": [map_buser_to_guser(bpull["author"])],
-                "closed": is_closed,
-                "labels": list(set(labels)),
-                "base": "TODO",
-                "head": "TODO"
-            },
-            "comments": comments
-        }
-        return {"type": "pull", "data": pull_data}
+        base_branch = cmap.convert_branch_name(bpull["destination"]["branch"]["name"])
+        if bpull["source"]["branch"] is not None:
+            head_branch = cmap.convert_branch_name(
+                branch=bpull["source"]["branch"]["name"],
+                repo=bpull["source"]["repository"]["full_name"],
+                default_repo=bexport.get_repo_full_name()
+            )
+            print("head_branch:", bpull["source"]["repository"]["full_name"], bpull["source"]["branch"]["name"], "-->", head_branch)
+        else:
+            head_branch = base_branch
+    print("head_branch:", head_branch, "base_branch:", base_branch)
+    pull_data = {
+        "pull": {
+            "title": bpull["title"],
+            "body": issue_body,
+            "assignees": [map_buser_to_guser(bpull["author"])],
+            "closed": is_closed,
+            "labels": list(set(labels)),
+            "base": base_branch,
+            "head": head_branch
+        },
+        "comments": comments
+    }
+    return {"type": "pull", "data": pull_data}
 
 
 def bitbucket_to_github(bexport, gimport, cmap, args):
@@ -841,6 +840,7 @@ def main():
         check(bexport=bexport, gimport=gimport, args=args)
     else:
         bitbucket_to_github(bexport=bexport, gimport=gimport, cmap=cmap, args=args)
+
 
 if __name__ == "__main__":
     main()

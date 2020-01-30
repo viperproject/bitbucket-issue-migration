@@ -6,7 +6,7 @@ from migrate.bitbucket import BitbucketExport
 
 
 def get_bitbucket_base_url():
-    return "ssh://hg@ethbitbucket/"
+    return "ssh://hg@bitbucket.org/"
 
 
 class ForkCommit:
