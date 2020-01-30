@@ -168,18 +168,21 @@ def map_bstate_to_gstate(bissue):
         return "closed"
 
 
-def lookup_user(buser_nickname):
+def lookup_user(buser_nickname, check=False):
     if buser_nickname not in config.USER_MAPPING:
-        return 'ignore_' + buser_nickname
-    return 'ignore_' + config.USER_MAPPING[buser_nickname]
+        if check:
+            return None
+        else:
+            return "ignore_" + buser_nickname
+    return "ignore_" + config.USER_MAPPING[buser_nickname]
 
 
-def map_buser_to_guser(buser):
+def map_buser_to_guser(buser, check=False):
     if buser is None:
         return None
     else:
         nickname = buser["nickname"]
-        return lookup_user(nickname)
+        return lookup_user(nickname, check=check)
 
 
 def map_brepo_to_grepo(brepo):
@@ -369,25 +372,20 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
     sb.append(">\n")
     source = bpull["source"]
     if source["repository"] is None and source["commit"] is None:
-        source_brepo = bexport.get_repo_full_name()
         source_bbranch = source["branch"]["name"]
-        source_grepo = map_brepo_to_grepo(source_brepo)
-        source_gbranch = cmap.convert_branch_name(branch=source_bbranch)
-        sb.append("> Source: branch [`{branch}`](https://github.com/{grepo}/tree/{gbranch})\n".format(
-            branch=source_gbranch,
-            grepo=source_grepo,
-            gbranch=source_gbranch
+        sb.append("> Source: unknown commit on branch `{branch}` of an unknown repo\n".format(
+            branch=source_bbranch
         ))
     else:
         source_brepo = source["repository"]["full_name"]
         source_bbranch = source["branch"]["name"]
         source_bhash = source["commit"]["hash"]
-        source_grepo = map_brepo_to_grepo(source_brepo)
+        source_grepo = bexport.get_repo_full_name()
         source_gbranch = cmap.convert_branch_name(branch=source_bbranch, repo=source_brepo, default_repo=bexport.get_repo_full_name())
         source_ghash = cmap.convert_commit_hash(source_bhash)
         if source_ghash is None:
             print("Error: could not map mercurial commit '{}' (source of a PR) to git.".format(source_bhash))
-        sb.append("> Source: branch [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch}), [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
+        sb.append("> Source: https://github.com/{grepo}/commit/{ghash} on [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch})\n".format(
             grepo=source_grepo,
             gbranch=source_gbranch,
             ghash=source_ghash
@@ -404,7 +402,7 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
         print("Error: the destination of a pull request, '{}', is not '{}'.".format(destination_brepo, bexport.get_repo_full_name()))
     if destination_ghash is None:
         print("Error: could not map mercurial commit '{}' (destination of a PR) to git.".format(destination_bhash))
-    sb.append("> Destination: branch [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch}), [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
+    sb.append("> Destination: https://github.com/{grepo}/commit/{ghash} on [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch})\n".format(
         grepo=destination_grepo,
         gbranch=destination_gbranch,
         ghash=destination_ghash
@@ -415,7 +413,7 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
         merge_bhash = bpull["merge_commit"]["hash"]
         merge_grepo = map_brepo_to_grepo(merge_brepo)
         merge_ghash = cmap.convert_commit_hash(merge_bhash)
-        sb.append("> Marge commit: [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
+        sb.append("> Marge commit: https://github.com/{grepo}/commit/{ghash}\n".format(
             grepo=merge_grepo,
             ghash=merge_ghash
         ))
@@ -578,7 +576,7 @@ def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id, c
             "body": issue_body,
             "created_at": convert_date(bissue["created_on"]),
             "updated_at": convert_date(bissue["updated_on"]),
-            "assignee": map_buser_to_guser(bissue["assignee"]),
+            "assignee": map_buser_to_guser(bissue["assignee"], check=True),
             "closed": map_bstate_to_gstate(bissue) == "closed",
             "labels": list(set(labels)),
         },
@@ -602,39 +600,41 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
     # Construct labels
     labels = ["pull request"] + map_bstate_to_glabels(bpull)
 
-    # Compute the github head/base name
     is_closed = map_bstate_to_gstate(bpull) == "closed"
     if is_closed:
-        base_branch = cmap.convert_commit_hash(bpull["destination"]["commit"]["hash"])
-        if bpull["source"]["commit"] is not None:
-            head_branch = cmap.convert_commit_hash(bpull["source"]["commit"]["hash"])
-        else:
-            head_branch = base_branch
+        issue_data = {
+            "issue": {
+                "title": bpull["title"],
+                "body": issue_body,
+                "created_at": convert_date(bpull["created_on"]),
+                "updated_at": convert_date(bpull["updated_on"]),
+                "assignee": map_buser_to_guser(bpull["author"], check=True),
+                "closed": is_closed,
+                "labels": list(set(labels)),
+            },
+            "comments": comments
+        }
+        return {"type": "issue", "data": issue_data}
     else:
         base_branch = cmap.convert_branch_name(bpull["destination"]["branch"]["name"])
-        if bpull["source"]["branch"] is not None:
-            head_branch = cmap.convert_branch_name(
-                branch=bpull["source"]["branch"]["name"],
-                repo=bpull["source"]["repository"]["full_name"],
-                default_repo=bexport.get_repo_full_name()
-            )
-            print("head_branch:", bpull["source"]["repository"]["full_name"], bpull["source"]["branch"]["name"], "-->", head_branch)
-        else:
-            head_branch = base_branch
-    print("head_branch:", head_branch, "base_branch:", base_branch)
-    pull_data = {
-        "pull": {
-            "title": bpull["title"],
-            "body": issue_body,
-            "assignees": [map_buser_to_guser(bpull["author"])],
-            "closed": is_closed,
-            "labels": list(set(labels)),
-            "base": base_branch,
-            "head": head_branch
-        },
-        "comments": comments
-    }
-    return {"type": "pull", "data": pull_data}
+        head_branch = cmap.convert_branch_name(
+            branch=bpull["source"]["branch"]["name"],
+            repo=bpull["source"]["repository"]["full_name"],
+            default_repo=bexport.get_repo_full_name()
+        )
+        pull_data = {
+            "pull": {
+                "title": bpull["title"],
+                "body": issue_body,
+                "assignees": [map_buser_to_guser(bpull["author"], check=True)],
+                "closed": is_closed,
+                "labels": list(set(labels)),
+                "base": base_branch,
+                "head": head_branch
+            },
+            "comments": comments
+        }
+        return {"type": "pull", "data": pull_data}
 
 
 def bitbucket_to_github(bexport, gimport, cmap, args):
@@ -697,9 +697,10 @@ def bitbucket_to_github(bexport, gimport, cmap, args):
                 print("Create github issue #{}...".format(number))
                 gimport.create_issue_with_comments(data)
         elif type == "pull":
-            if number in existing_gpulls:
+            pull_number = number - pulls_id_offset
+            if pull_number in existing_gpulls:
                 print("Update github pull request #{}...".format(number))
-                gimport.update_issue_with_comments(existing_gpulls[number], data)
+                gimport.update_issue_with_comments(existing_gpulls[pull_number], data)
             else:
                 print("Create github pull request #{}...".format(number))
                 gimport.create_pull_with_comments(data)
@@ -844,15 +845,26 @@ def main():
         number = int(args.dev)
         bpull = bexport.get_pull(number)
         existing_gpulls = gimport.get_pulls()
+        existing_gissues = gimport.get_issues()
         issue_or_pull = construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args)
-        assert issue_or_pull["type"] == "pull"
+        type = issue_or_pull["type"]
         data = issue_or_pull["data"]
-        if number in existing_gpulls:
-            print("Update github pull request #{}...".format(number))
-            gimport.update_pull_with_comments(existing_gpulls[number], data)
+        if type == "issue":
+            if number in existing_gissues:
+                print("Update github issue #{}...".format(number))
+                gimport.update_issue_with_comments(existing_gissues[number], data)
+            else:
+                print("Create github issue #{}...".format(number))
+                gimport.create_issue_with_comments(data)
+        elif type == "pull":
+            if number in existing_gpulls:
+                print("Update github pull request #{}...".format(number))
+                gimport.update_issue_with_comments(existing_gpulls[number], data)
+            else:
+                print("Create github pull request #{}...".format(number))
+                gimport.create_pull_with_comments(data)
         else:
-            print("Create github pull request #{}...".format(number))
-            gimport.create_pull_with_comments(data)
+            print("Error: unknown type '{}' for data '{}'".format(type, data))
         return
     if args.check:
         check(bexport=bexport, gimport=gimport, args=args)
