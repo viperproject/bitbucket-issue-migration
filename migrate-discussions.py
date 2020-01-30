@@ -79,7 +79,7 @@ IMPLICIT_PR_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?pull request #(\d+)/i'
                            .format(repo_names="|".join([repo.split('/')[-1] + " "
                                                         for repo in config.KNOWN_REPO_MAPPING])))
 def replace_implicit_links_to_prs(body, args):
-    def replace_issue_link(match):
+    def replace_pr_link(match):
         repo_name = match.group(1)
         bpr_nr = match.group(2)
         if bpr_nr is None:
@@ -104,7 +104,7 @@ def replace_implicit_links_to_prs(body, args):
         gpr_number = bpr_nr + issues_count
         return r'https://github.com/{repo}/pull/{gpr_number}'.format(
             repo=grepo, gpr_number=gpr_number)
-    return IMPLICIT_PR_LINK_RE.sub(replace_issue_link, body)
+    return IMPLICIT_PR_LINK_RE.sub(replace_pr_link, body)
 
 
 MENTION_RE = re.compile(r'(?:^|(?<=[^\w]))@([a-zA-Z0-9_\-]+|{[a-zA-Z0-9_\-:]+})')
@@ -228,7 +228,7 @@ def convert_date(bb_date):
     raise RuntimeError("Could not parse date: {}".format(bb_date))
 
 
-def construct_gcomment_body(bcomment, bcomments_by_id, args):
+def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args):
     sb = []
     comment_created_on = time_string_to_date_string(bcomment["created_on"])
     sb.append("> **@" + map_buser_to_guser(bcomment["user"]) + "** commented on " + comment_created_on + "\n")
@@ -258,12 +258,12 @@ def construct_gcomment_body(bcomment, bcomments_by_id, args):
     if "parent" in bcomment:
         parent_comment = bcomments_by_id[bcomment["parent"]["id"]]
         if parent_comment["content"]["raw"] is not None:
-            sb.append("> {}\n\n".format(map_content(parent_comment["content"]["raw"], args)))
-    sb.append("" if bcomment["content"]["raw"] is None else map_content(bcomment["content"]["raw"], args))
+            sb.append("> {}\n\n".format(map_content(parent_comment["content"]["raw"], cmap, args)))
+    sb.append("" if bcomment["content"]["raw"] is None else map_content(bcomment["content"]["raw"], cmap, args))
     return "".join(sb)
 
 
-def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id, args):
+def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id, cmap, args):
     sb = []
 
     # Header
@@ -275,7 +275,7 @@ def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id, arg
 
     # Content
     sb.append("\n")
-    sb.append(map_content(bissue["content"]["raw"], args))
+    sb.append(map_content(bissue["content"]["raw"], cmap, args))
     sb.append("\n")
 
     # Attachments
@@ -384,7 +384,7 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
 
     # Content
     sb.append("\n")
-    sb.append(map_content(bpull["description"], args))
+    sb.append(map_content(bpull["description"], cmap, args))
     sb.append("\n")
 
     return "".join(sb)
@@ -433,7 +433,7 @@ def construct_gissue_title_for_pull(bpull):
     return "[PR] " + bpull["title"]
 
 
-def construct_gissue_comments(bcomments, args):
+def construct_gissue_comments(bcomments, cmap, args):
     comments = []
 
     for comment_id, bcomment in bcomments.items():
@@ -445,7 +445,7 @@ def construct_gissue_comments(bcomments, args):
             continue
         # Constrct comment
         comment = {
-            "body": construct_gcomment_body(bcomment, bcomments, args),
+            "body": construct_gcomment_body(bcomment, bcomments, cmap, args),
             "created_at": convert_date(bcomment["created_on"])
         }
         comments.append(comment)
@@ -513,17 +513,17 @@ def construct_gissue_comments_for_activity(bactivity):
     return comments
 
 
-def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id, args):
+def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id, cmap, args):
     issue_id = bissue["id"]
     battachments = bexport.get_issue_attachments(issue_id)
     bcomments = bexport.get_issue_comments(issue_id)
     bchanges = bexport.get_issue_changes(issue_id)
 
-    issue_body = construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id, args)
+    issue_body = construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id, cmap, args)
 
     # Construct comments
     comments = []
-    comments += construct_gissue_comments(bcomments, args)
+    comments += construct_gissue_comments(bcomments, cmap, args)
     comments += construct_gissue_comments_for_changes(bchanges)
     comments.sort(key=lambda x: x["created_at"])
 
@@ -558,7 +558,7 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
 
     # Construct comments
     comments = []
-    comments += construct_gissue_comments(bcomments, args)
+    comments += construct_gissue_comments(bcomments, cmap, args)
     comments += construct_gissue_comments_for_activity(bactivity)
     comments.sort(key=lambda x: x["created_at"])
 
@@ -626,7 +626,7 @@ def bitbucket_to_github(bexport, gimport, cmap, args):
     for bissue in bissues:
         issue_id = bissue["id"]
         print("Prepare github issue #{} from bitbucket issue...".format(issue_id))
-        gissue = construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id, args)
+        gissue = construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id, cmap, args)
         issues_and_pulls.append({"type": "issue", "data": gissue})
 
     for bpull in bpulls:
@@ -774,11 +774,6 @@ def create_parser():
         required=True
     )
     parser.add_argument(
-        "-c", "--commit-map",
-        help="Path to the folder containing the mapping of mercurial commits to git commits.",
-        required=True
-    )
-    parser.add_argument(
         "--skip-attachments",
         help="Skip the migration of attachments (development only)",
         action='store_true'
@@ -800,7 +795,7 @@ def main():
     args = parser.parse_args()
     bexport = BitbucketExport(args.bitbucket_repository)
     gimport = GithubImport(args.github_access_token, args.github_repository, debug=False)
-    cmap = CommitMap(args.commit_map)
+    cmap = CommitMap()
     print("Load mapping of mercurial commits to git...")
     cmap.load_from_disk()
     if args.dev is not None:
