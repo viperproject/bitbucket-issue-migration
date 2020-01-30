@@ -36,7 +36,7 @@ def get_fork_commit_url(pr):
 def get_fork_commits(bexport, args):
     def is_open(pr):
         return pr["state"] == "OPEN"
-    pull_requests = bexport.get_pull_requests()
+    pull_requests = bexport.get_pulls()
     open_prs = list(filter(is_open, pull_requests))
     fork_commits = []
     for pr in open_prs:

@@ -61,34 +61,34 @@ class BitbucketExport:
         data = get_request_content(self.repo_url + "/issues/" + str(issue_id) + "/attachments/" + attachment_name, self.session)
         return data
 
-    def get_simplified_pull_requests(self):
+    def get_simplified_pulls(self):
         print("Get all simplified bitbucket pull requests...")
-        pull_requests = list(get_paginated_json(self.repo_url + "/pullrequests?state=MERGED&state=SUPERSEDED&state=OPEN&state=DECLINED", self.session))
-        pull_requests.sort(key=lambda x: x["id"])
-        return pull_requests
+        pulls = list(get_paginated_json(self.repo_url + "/pullrequests?state=MERGED&state=SUPERSEDED&state=OPEN&state=DECLINED", self.session))
+        pulls.sort(key=lambda x: x["id"])
+        return pulls
 
-    def get_pull_requests_count(self):
-        pull_requests_page = get_request_json(self.repo_url + "/pullrequests?state=MERGED&state=SUPERSEDED&state=OPEN&state=DECLINED", self.session)
-        return pull_requests_page["size"]
+    def get_pulls_count(self):
+        pulls_page = get_request_json(self.repo_url + "/pullrequests?state=MERGED&state=SUPERSEDED&state=OPEN&state=DECLINED", self.session)
+        return pulls_page["size"]
 
-    def get_pull_request(self, pull_requests_id):
-        pull_request = get_request_json(self.repo_url + "/pullrequests/" + str(pull_requests_id), self.session)
-        return pull_request
+    def get_pull(self, pull_id):
+        pull = get_request_json(self.repo_url + "/pullrequests/" + str(pull_id), self.session)
+        return pull
 
-    def get_pull_requests(self):
-        pull_requests_count = self.get_pull_requests_count()
-        print("Get all {} detailed bitbucket pull requests...".format(pull_requests_count))
-        pull_requests = []
-        for pull_request_id in range(1, pull_requests_count + 1):
-            if pull_request_id % 10 == 0:
-                print("{}/{}...".format(pull_request_id, pull_requests_count))
-            pull_requests.append(self.get_pull_request(pull_request_id))
-        return pull_requests
+    def get_pulls(self):
+        pulls_count = self.get_pulls_count()
+        print("Get all {} detailed bitbucket pull requests...".format(pulls_count))
+        pulls = []
+        for pull_id in range(1, pulls_count + 1):
+            if pull_id % 10 == 0:
+                print("{}/{}...".format(pull_id, pulls_count))
+            pulls.append(self.get_pull(pull_id))
+        return pulls
 
-    def get_pull_request_comments(self, pull_requests_id):
-        comments = list(get_paginated_json(self.repo_url + "/pullrequests/" + str(pull_requests_id) + "/comments", self.session))
+    def get_pull_comments(self, pulls_id):
+        comments = list(get_paginated_json(self.repo_url + "/pullrequests/" + str(pulls_id) + "/comments", self.session))
         return {comment["id"]: comment for comment in comments}
 
-    def get_pull_request_activity(self, pull_requests_id):
-        activity = list(get_paginated_json(self.repo_url + "/pullrequests/" + str(pull_requests_id) + "/activity", self.session))
+    def get_pull_activity(self, pulls_id):
+        activity = list(get_paginated_json(self.repo_url + "/pullrequests/" + str(pulls_id) + "/activity", self.session))
         return activity

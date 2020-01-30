@@ -63,7 +63,7 @@ def replace_links_to_users(body):
 
 def map_bstate_to_gstate(bissue):
     bstate = bissue["state"]
-    if bstate in config.OPEN_ISSUE_OR_PULL_REQUEST_STATES:
+    if bstate in config.OPEN_ISSUE_OR_pull_STATES:
         return "open"
     else:
         return "closed"
@@ -166,7 +166,7 @@ def convert_date(bb_date):
     raise RuntimeError("Could not parse date: {}".format(bb_date))
 
 
-def construct_gcomment_body(bcomment, bcomments_by_id, bexport=None, bpull_request=None):
+def construct_gcomment_body(bcomment, bcomments_by_id, bexport=None, bpull=None):
     sb = []
     comment_created_on = time_string_to_date_string(bcomment["created_on"])
     sb.append("> **@" + map_buser_to_guser(bcomment["user"]) + "** commented on " + comment_created_on + "\n")
@@ -237,25 +237,25 @@ def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id):
     return "".join(sb)
 
 
-def construct_gpull_request_body(bpull_request, bexport, cmap):
+def construct_gpull_body(bpull, bexport, cmap):
     sb = []
 
     # Header
-    created_on = time_string_to_date_string(bpull_request["created_on"])
-    updated_on = time_string_to_date_string(bpull_request["updated_on"])
-    if bpull_request["author"] is None:
+    created_on = time_string_to_date_string(bpull["created_on"])
+    updated_on = time_string_to_date_string(bpull["updated_on"])
+    if bpull["author"] is None:
         author_msg = ""
     else:
-        author_msg = "by **@" + map_buser_to_guser(bpull_request["author"]) + "** "
+        author_msg = "by **@" + map_buser_to_guser(bpull["author"]) + "** "
     sb.append(">  **Pull request** :twisted_rightwards_arrows: created " + author_msg + "on " + created_on + "\n")
     if created_on != updated_on:
         sb.append("> Last updated on " + updated_on + "\n")
 
-    if bpull_request["participants"]:
+    if bpull["participants"]:
         sb.append(">\n")
         sb.append("> Participants:\n")
         sb.append(">\n")
-        for participant in bpull_request["participants"]:
+        for participant in bpull["participants"]:
             sb.append("> * **@{}**".format(map_buser_to_guser(participant["user"])))
             if participant["role"] == "REVIEWER":
                 sb.append(" (reviewer)")
@@ -264,7 +264,7 @@ def construct_gpull_request_body(bpull_request, bexport, cmap):
             sb.append("\n")
 
     sb.append(">\n")
-    source = bpull_request["source"]
+    source = bpull["source"]
     if source["repository"] is None and source["commit"] is None:
         source_brepo = bexport.get_repo_full_name()
         source_bbranch = source["branch"]["name"]
@@ -289,7 +289,7 @@ def construct_gpull_request_body(bpull_request, bexport, cmap):
             ghash=source_ghash
         ))
 
-    destination = bpull_request["destination"]
+    destination = bpull["destination"]
     destination_brepo = destination["repository"]["full_name"]
     destination_bbranch = destination["branch"]["name"]
     destination_bhash = destination["commit"]["hash"]
@@ -306,9 +306,9 @@ def construct_gpull_request_body(bpull_request, bexport, cmap):
         ghash=destination_ghash
     ))
 
-    if bpull_request["merge_commit"] is not None:
+    if bpull["merge_commit"] is not None:
         merge_brepo = bexport.get_repo_full_name()
-        merge_bhash = bpull_request["merge_commit"]["hash"]
+        merge_bhash = bpull["merge_commit"]["hash"]
         merge_grepo = map_brepo_to_grepo(merge_brepo)
         merge_ghash = cmap.convert_commit_hash(merge_bhash)
         sb.append("> Marge commit: [{ghash}](https://github.com/{grepo}/commit/{ghash})\n".format(
@@ -317,11 +317,11 @@ def construct_gpull_request_body(bpull_request, bexport, cmap):
         ))
 
     sb.append(">\n")
-    sb.append("> State: **`{}`**\n".format(bpull_request["state"]))
+    sb.append("> State: **`{}`**\n".format(bpull["state"]))
 
     # Content
     sb.append("\n")
-    sb.append(map_content(bpull_request["description"]))
+    sb.append(map_content(bpull["description"]))
     sb.append("\n")
 
     return "".join(sb)
@@ -366,11 +366,11 @@ def construct_gcomment_body_for_approval_activity(approval_activity):
     )
 
 
-def construct_gissue_title_for_pull_request(bpull_request):
-    return "[PR] " + bpull_request["title"]
+def construct_gissue_title_for_pull(bpull):
+    return "[PR] " + bpull["title"]
 
 
-def construct_gissue_comments(bcomments, bexport=None, bpull_request=None):
+def construct_gissue_comments(bcomments, bexport=None, bpull=None):
     comments = []
 
     for comment_id, bcomment in bcomments.items():
@@ -382,7 +382,7 @@ def construct_gissue_comments(bcomments, bexport=None, bpull_request=None):
             continue
         # Constrct comment
         comment = {
-            "body": construct_gcomment_body(bcomment, bcomments, bexport, bpull_request),
+            "body": construct_gcomment_body(bcomment, bcomments, bexport, bpull),
             "created_at": convert_date(bcomment["created_on"])
         }
         comments.append(comment)
@@ -486,47 +486,49 @@ def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id):
     }
 
 
-def construct_gissue_from_bpull_request(bpull_request, bexport, cmap):
-    pull_request_id = bpull_request["id"]
-    bcomments = bexport.get_pull_request_comments(pull_request_id)
-    bactivity = bexport.get_pull_request_activity(pull_request_id)
+def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap):
+    pull_id = bpull["id"]
+    bcomments = bexport.get_pull_comments(pull_id)
+    bactivity = bexport.get_pull_activity(pull_id)
 
-    issue_body = construct_gpull_request_body(bpull_request, bexport, cmap)
+    issue_body = construct_gpull_body(bpull, bexport, cmap)
 
     # Construct comments
     comments = []
-    comments += construct_gissue_comments(bcomments, bexport, bpull_request)
+    comments += construct_gissue_comments(bcomments, bexport, bpull)
     comments += construct_gissue_comments_for_activity(bactivity)
     comments.sort(key=lambda x: x["created_at"])
 
     # Construct labels
-    labels = ["pull request"] + map_bstate_to_glabels(bpull_request)
+    labels = ["pull request"] + map_bstate_to_glabels(bpull)
 
-    return {
+    issue_data = {
         "issue": {
-            "title": construct_gissue_title_for_pull_request(bpull_request),
+            "title": construct_gissue_title_for_pull(bpull),
             "body": issue_body,
-            "created_at": convert_date(bpull_request["created_on"]),
-            "updated_at": convert_date(bpull_request["updated_on"]),
-            "assignee": map_buser_to_guser(bpull_request["author"]),
-            "closed": map_bstate_to_gstate(bpull_request) == "closed",
+            "created_at": convert_date(bpull["created_on"]),
+            "updated_at": convert_date(bpull["updated_on"]),
+            "assignee": map_buser_to_guser(bpull["author"]),
+            "closed": map_bstate_to_gstate(bpull) == "closed",
             "labels": list(set(labels)),
         },
         "comments": comments
     }
 
+    return {"type": "issue", "data": issue_data}
+
 
 def bitbucket_to_github(bexport, gimport, args, cmap):
     brepo_full_name = bexport.get_repo_full_name()
-    issues_data = []
+    issues_and_pulls = []
     attachment_gist_by_issue_id = {}
 
     # Retrieve data
     bissues = bexport.get_issues()
-    bpull_requests = bexport.get_pull_requests()
+    bpulls = bexport.get_pulls()
     assert brepo_full_name in config.KNOWN_ISSUES_COUNT_MAPPING
     assert config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name] == len(bissues)
-    pull_requests_id_offset = config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name]
+    pulls_id_offset = config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name]
 
     # Migrate attachments
     if not args.skip_attachments:
@@ -548,54 +550,67 @@ def bitbucket_to_github(bexport, gimport, args, cmap):
         issue_id = bissue["id"]
         print("Prepare github issue #{} from bitbucket issue...".format(issue_id))
         gissue = construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id)
-        issues_data.append(gissue)
+        issues_and_pulls.append({"type": "issue", "data": gissue})
 
-    for bpull_request in bpull_requests:
-        issue_id = bpull_request["id"] + pull_requests_id_offset
+    for bpull in bpulls:
+        issue_id = bpull["id"] + pulls_id_offset
         print("Prepare github issue #{} from bitbucket pull request...".format(issue_id))
-        gissue = construct_gissue_from_bpull_request(bpull_request, bexport, cmap)
-        issues_data.append(gissue)
+        gissue_or_gpull = construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap)
+        issues_and_pulls.append(gissue_or_gpull)
 
     # Upload github issues
     print("Upload github issues...")
     existing_gissues = gimport.get_issues()
-    for issue_id in range(1, len(existing_gissues) + 1):
-        existing_gissue = existing_gissues[issue_id - 1]
-        assert existing_gissue.number == issue_id
-        print("Upload github issue #{}... [rate limiting: {}]".format(issue_id, gimport.get_remaining_rate_limit()))
-        if issue_id > len(issues_data):
-            print("Error: existing github issue #{} should not exist.".format(issue_id))
-            existing_gissue.edit(state="closed")
-        else:
-            gimport.update_issue_with_comments(existing_gissue, issues_data[issue_id - 1])
+    existing_gpulls = gimport.get_pulls()
 
-    for issue_id in range(len(existing_gissues) + 1, len(issues_data) + 1):
-        print("Create github issue #{}...".format(issue_id))
-        gissue_data = issues_data[issue_id - 1]
-        gimport.create_issue_with_comments(gissue_data)
+    for index, issue_or_pull in enumerate(issues_and_pulls):
+        number = index + 1
+        type = issue_or_pull["type"]
+        data = issue_or_pull["data"]
+
+        print("Upload github issue or pull request #{}... [rate limiting: {}]".format(number, gimport.get_remaining_rate_limit()))
+
+        if type == "issue":
+            if number in existing_gissues:
+                print("Update github issue #{}...".format(number))
+                gimport.update_issue_with_comments(existing_gissues[number], data)
+            else:
+                print("Create github issue #{}...".format(number))
+                gimport.create_issue_with_comments(data)
+        elif type == "pull":
+            if number in existing_gissues:
+                print("Update github pull request #{}...".format(number))
+                gimport.update_issue_with_comments(existing_gpulls[number], data)
+            else:
+                print("Create github pull request #{}...".format(number))
+                gimport.create_pull_with_comments(data)
+        else:
+            print("Error: unknown type '{}' for data '{}'".format(type, data))
 
     # Final checks
-    if len(bissues) + len(bpull_requests) != gimport.get_issues_count():
-        print("Error: the number of Github issues seems to be wrong.")
+    if len(bissues) + len(bpulls) != gimport.get_issues_count() + gimport.get_pulls_count():
+        print("Error: the number of Github issues and pull requests seems to be wrong.")
 
 
 def check(bexport, gimport, args):
     # Retrieve data
     bissues = bexport.get_issues()
-    bpull_requests = bexport.get_pull_requests()
+    bpulls = bexport.get_pulls()
     gissues_count = gimport.get_issues_count()
+    gpulls_count = gimport.get_pulls_count()
     print("Number of bitbucket issues:", len(bissues))
-    print("Number of bitbucket pull requests:", len(bpull_requests))
+    print("Number of bitbucket pull requests:", len(bpulls))
     print("Number of github issues: {}".format(gissues_count))
+    print("Number of github pull requests: {}".format(gpulls_count))
 
     if gissues_count != 0:
         print("Warning: the github repository has existing issues, so the migration can't preserve the creation date of issues and pull requests.")
-    if gissues_count > len(bissues) + len(bpull_requests):
-        print("Error: the github repository has {} issues, but the maximum should be {} because the bitbucket repository only has {} issues and {} pull requests.".format(
+    if gissues_count + gpulls_count > len(bissues) + len(bpulls):
+        print("Error: the github repository has {} issues and pull requests, but the maximum should be {} because the bitbucket repository only has {} issues and {} pull requests.".format(
             gissues_count,
-            len(bissues) + len(bpull_requests),
+            len(bissues) + len(bpulls),
             len(bissues),
-            len(bpull_requests)
+            len(bpulls)
         ))
 
     brepo_full_name = bexport.get_repo_full_name()
@@ -628,33 +643,33 @@ def check(bexport, gimport, args):
             bnicknames.add(bissue["assignee"]["nickname"])
         for bcomment in bexport.get_issue_comments(bissue_id).values():
             bnicknames.add(bcomment["user"]["nickname"])
-    for bpull_request in bpull_requests:
-        bpull_request_id = bpull_request["id"]
-        if bpull_request_id % 10 == 0:
-            print("Checking bitbucket pull request #{}...".format(bpull_request_id))
-        if bpull_request["author"] is not None:
-            bnicknames.add(bpull_request["author"]["nickname"])
-        for bparticipant in bpull_request["participants"]:
+    for bpull in bpulls:
+        bpull_id = bpull["id"]
+        if bpull_id % 10 == 0:
+            print("Checking bitbucket pull request #{}...".format(bpull_id))
+        if bpull["author"] is not None:
+            bnicknames.add(bpull["author"]["nickname"])
+        for bparticipant in bpull["participants"]:
             bnicknames.add(bparticipant["user"]["nickname"])
-        for breviewer in bpull_request["reviewers"]:
+        for breviewer in bpull["reviewers"]:
             bnicknames.add(breviewer["nickname"])
         for bcomment in bexport.get_issue_comments(bissue_id).values():
             bnicknames.add(bcomment["user"]["nickname"])
-        if (bpull_request["source"]["repository"] is None) != (bpull_request["source"]["commit"] is None):
+        if (bpull["source"]["repository"] is None) != (bpull["source"]["commit"] is None):
             print("Info: source repository is '{}', but commit is '{}'".format(
-                bpull_request["source"]["repository"],
-                bpull_request["source"]["commit"]
+                bpull["source"]["repository"],
+                bpull["source"]["commit"]
             ))
-        if (bpull_request["destination"]["repository"] is None) != (bpull_request["destination"]["commit"] is None):
+        if (bpull["destination"]["repository"] is None) != (bpull["destination"]["commit"] is None):
             print("Info: destination repository is '{}', but commit is '{}'".format(
-                bpull_request["destination"]["repository"],
-                bpull_request["destination"]["commit"]
+                bpull["destination"]["repository"],
+                bpull["destination"]["commit"]
             ))
-        if bpull_request["destination"]["repository"] is None:
+        if bpull["destination"]["repository"] is None:
             print("Info: destination repository is None")
-        if bpull_request["source"]["branch"] is None:
+        if bpull["source"]["branch"] is None:
             print("Info: source branch is None")
-        if bpull_request["destination"]["branch"] is None:
+        if bpull["destination"]["branch"] is None:
             print("Info: destination branch is None")
     for nickname in bnicknames:
         if nickname not in config.USER_MAPPING:
@@ -705,7 +720,7 @@ def main():
     bexport = BitbucketExport(args.bitbucket_repository)
     gimport = GithubImport(args.github_access_token, args.github_repository, debug=False)
     cmap = CommitMap(args.commit_map)
-    print("Load mapping of mercurial commits to git")
+    print("Load mapping of mercurial commits to git...")
     cmap.load_from_disk()
     if args.check:
         check(bexport=bexport, gimport=gimport, args=args)
