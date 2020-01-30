@@ -25,10 +25,16 @@ class GithubImport:
     def get_issues_count(self):
         return self.repo.get_issues(state="all").totalCount
 
+    def get_pulls_count(self):
+        return self.repo.get_pulls(state="all").totalCount
+
     def get_issues(self):
-        issues = list(self.repo.get_issues(state="all"))
-        issues.sort(key=lambda x: x.number)
-        return issues
+        issues = self.repo.get_issues(state="all")
+        return {x.number: x for x in issues}
+
+    def get_pulls(self):
+        pulls = self.repo.get_pulls(state="all")
+        return {x.number: x for x in pulls}
 
     def get_gist_by_description(self, description):
         return next(
@@ -108,3 +114,52 @@ class GithubImport:
             assignees=[] if meta["assignee"] is None else [meta["assignee"]]
         )
         self.update_issue_comments(issue, issue_data["comments"])
+
+    def update_pull_comments(self, pull, comments_data):
+        pull_id = pull.number
+        num_comments = len(comments_data)
+        existing_comments = list(pull.get_issue_comments())
+
+        # Create or update comments
+        for comment_num, comment_data in enumerate(comments_data):
+            print("Set comment {}/{} of github pull request #{}...".format(comment_num + 1, num_comments, pull_id))
+            comment_body = comment_data["body"]
+            if comment_num < len(existing_comments):
+                existing_comments[comment_num].edit(comment_body)
+            else:
+                pull.create_comment(comment_body)
+
+        # Delete comments in excess
+        comments_to_delete = existing_comments[num_comments:]
+        for i, gcomment in enumerate(comments_to_delete):
+            print("Delete extra gituhb comment {}/{} of pull request #{}...".format(i + 1, len(comments_to_delete), pull_id))
+            gcomment.delete()
+
+    def update_pull_with_comments(self, pull, pull_data):
+        meta = pull_data["pull"]
+        assert meta["head"] == pull.head.ref, pull.head.ref  # to check
+        pull.edit(
+            title=meta["title"],
+            body=meta["body"],
+            state=meta["state"],
+            base=meta["base"],
+        )
+        pull.set_labels(meta["labels"])
+        pull.remove_from_assignees([
+            x.name for x in pull.assignees if x.name not in meta["assignees"]
+        ])
+        pull.add_to_assignees(meta["assignees"])
+        self.update_pull_comments(pull, pull_data["comments"])
+
+    def create_pull_with_comments(self, pull_data):
+        meta = pull_data["pull"]
+        pull = self.repo.create_pull(
+            title=meta["title"],
+            body=meta["body"],
+            base=meta["base"],
+            head=meta["head"],
+        )
+        pull.set_labels(meta["labels"])
+        pull.add_to_assignees(meta["assignees"])
+        for comment in pull_data["comments"]:
+            pull.create_issue_comment(comment["body"])
