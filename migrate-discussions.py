@@ -122,8 +122,25 @@ def replace_links_to_users(body):
 
 
 # test for hex characters of at least length 7 starting and ending at a word boundary:
-COMMIT_HASH_RE = re.compile(r'\[.*?\]|\b([0-9A-Fa-f]{7,})\b')
-def replace_commit_hashes(body, cmap):
+EXPLICIT_COMMIT_HASH_RE = re.compile(r'https://bitbucket.org/({repos})/(?:commits*|rev)/([0-9A-Fa-f]{{7,}})'
+                                     .format(repos="|".join(config.KNOWN_REPO_MAPPING)))
+def replace_explicit_commit_hashes(body, cmap):
+    def replace_commit_hash(match):
+        brepo = match.group(1)
+        hg_hash = match.group(2)
+        git_hash = cmap.convert_commit_hash(hg_hash)
+        if git_hash is None or brepo not in config.KNOWN_REPO_MAPPING:
+            # leave link unchanged:
+            return match.group(0)
+        grepo = config.KNOWN_REPO_MAPPING[brepo]
+        return r'https://github.com/{grepo}/commit/{git_hash}'.format(
+            grepo=grepo, git_hash=git_hash)
+    return EXPLICIT_COMMIT_HASH_RE.sub(replace_commit_hash, body)
+
+
+# test for hex characters of at least length 7 starting and ending at a word boundary:
+IMPLICIT_COMMIT_HASH_RE = re.compile(r'\[.*?\]|\b([0-9A-Fa-f]{7,})\b')
+def replace_implicit_commit_hashes(body, cmap):
     def replace_commit_hash(match):
         hg_hash = match.group(1)
         if hg_hash is None:
@@ -233,7 +250,8 @@ def map_content(content, cmap, args):
     tmp = replace_explicit_links_to_prs(tmp)
     tmp = replace_implicit_links_to_prs(tmp, args)
     tmp = replace_links_to_users(tmp)
-    return replace_commit_hashes(tmp, cmap)
+    tmp = replace_explicit_commit_hashes(tmp, cmap)
+    return replace_implicit_commit_hashes(tmp, cmap)
 
 
 def time_string_to_date_string(timestring):
