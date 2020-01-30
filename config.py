@@ -122,3 +122,10 @@ KNOWN_ISSUES_COUNT_MAPPING = {
     #"viperproject/silicon": ,
     #"viperproject/viperserver": ,
 }
+
+KNOWN_CMAP_PATHS = {
+    "viperproject/silver": "silver_cmap.txt",
+    #"viperproject/carbon": ,
+    #"viperproject/silicon": ,
+    #"viperproject/viperserver": ,
+}

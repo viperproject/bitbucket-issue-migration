@@ -42,8 +42,8 @@ def create_parser():
         required=True
     )
     parser.add_argument(
-        "-o", "--output",
-        help="Path to the mapping file that should be created",
+        "-b", "--bitbucket-repository",
+        help="Full name of the Bitbucket repository (e.g. viperproject/silver)",
         required=True
     )
     return parser
@@ -55,8 +55,8 @@ def main():
     repo = git.Repo(args.repo)
 
     map = create_map(repo)
-    commit_map = CommitMap(args.output)
-    commit_map.set_map(map)
+    commit_map = CommitMap()
+    commit_map.set_map(args.bitbucket_repository, map)
     commit_map.store_to_disk()
 
 
