@@ -30,6 +30,12 @@ class CommitMap:
             for hg_hash, git_hash in self.map.items():
                 file.write(self.serialize_entry(hg_hash, git_hash))
 
+    def get_repo_name(self, hash):
+        """Maps the hash of a mercurial commit to the bitbucket repo name.
+        """
+        # TODO
+        pass
+
     def convert_commit_hash(self, hash):
         """Maps the hash of a mercurial commit to the corresponding git commit hash.
         Returns None in case no matching has been found.
@@ -39,7 +45,7 @@ class CommitMap:
         except KeyError:
             return None
 
-    def convert_branch_name(self, branch_name, repo_name=None):
+    def convert_branch_name(self, branch_name, default_repo=None, repo_name=None):
         """Convert a branch of a bitbucket repo to the name of a github branch.
         """
         if repo_name is None:
