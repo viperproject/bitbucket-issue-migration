@@ -66,10 +66,15 @@ def get_fork_commit(fork_commits, rev_hash):
 
 def create_branch_per_fork_commit(repo, fork_commits, args):
     branch_heads = get_heads(repo)
-    # iterate over heads and create a branch for heads that are in fork_commits:
+    # iterate over heads and create a branch for heads that are in fork_commits
+    # (except if the original repo was args.bitbucket_repository):
     for branch_head in branch_heads:
         fork_commit = get_fork_commit(fork_commits, branch_head.rev_hash)
         if fork_commit is None:
+            continue
+        if fork_commit.fork == args.bitbucket_repository:
+            if args.verbose:
+                print("not creating a new branch for {} because it was already located in this repo".format(fork_commit.rev_hash))
             continue
         branch_name = "{fork_name}/{branch}".format(fork_name=fork_commit.fork, branch=branch_head.branch_name)
         create_branch(repo, fork_commit.rev_hash, branch_name, args)
