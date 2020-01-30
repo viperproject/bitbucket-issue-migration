@@ -18,18 +18,20 @@ class CommitMap:
         return match.group(1), match.group(2)
 
     def check_uniqueness(self):
-        # all hg as well as git commit hashes should be unique:
+        # all hg as well as git commit hashes should be unique (including their 7 character prefix):
         print("checking uniqueness of hg and git hashes...")
         for repo1 in self.maps:
             for repo2 in self.maps:
-                if repo1 == repo2:
-                    continue
-                for hg_commit in self.maps[repo1]:
-                    if hg_commit in self.maps[repo2]:
-                        print("hg commit {} is not unique".format(hg_commit))
-                for git_commit in self.maps[repo1].values():
-                    if git_commit in self.maps[repo2].values():
-                        print("git commit {} is not unique".format(git_commit))
+                for hg_commit_1 in self.maps[repo1]:
+                    short_hg_commit_1 = hg_commit_1[:7]
+                    for hg_commit_2 in self.maps[repo2]:
+                        if hg_commit_2.startswith(short_hg_commit_1) and not (hg_commit_1 == hg_commit_2 and repo1 == repo2):
+                            print("hg commit {} or a prefix of it is not unique".format(hg_commit_1))
+                for git_commit_1 in self.maps[repo1].values():
+                    short_git_commit_1 = git_commit_1[:7]
+                    for git_commit_2 in self.maps[repo2].values():
+                        if git_commit_2.startswith(short_git_commit_1) and not (git_commit_1 == git_commit_2 and repo1 == repo2):
+                            print("git commit {} or a prefix of it is not unique".format(git_commit_1))
         print("check done")
 
     def load_from_disk(self):
@@ -58,8 +60,9 @@ class CommitMap:
         """Maps the hash of a mercurial commit to the bitbucket repo name.
         """
         for repo_name in self.maps:
-            if hg_hash in self.maps[repo_name]:
-                return repo_name
+            for known_hg_hash in self.maps[repo_name]:
+                if known_hg_hash.startswith(hg_hash):
+                    return repo_name
         return None
 
     def convert_commit_hash(self, hg_hash):
@@ -67,8 +70,9 @@ class CommitMap:
         Returns None in case no matching has been found.
         """
         for repo_name in self.maps:
-            if hg_hash in self.maps[repo_name]:
-                return self.maps[repo_name][hg_hash]
+            for known_hg_hash in self.maps[repo_name]:
+                if known_hg_hash.startswith(hg_hash):
+                    return self.maps[repo_name][known_hg_hash]
         return None
 
     def convert_branch_name(self, branch_name, default_repo=None, repo_name=None):
