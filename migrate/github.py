@@ -145,6 +145,10 @@ class GithubImport:
             base=meta["base"],
         )
         pull.set_labels(meta["labels"])
+        pull.remove_from_assignees([
+            x.name for x in pull.assignees if x.name not in meta["assignees"]
+        ])
+        pull.add_to_assignees(meta["assignees"])
         self.update_pull_comments(pull, pull_data["comments"])
 
     def create_pull_with_comments(self, pull_data):
@@ -156,5 +160,6 @@ class GithubImport:
             head=meta["head"],
         )
         pull.set_labels(meta["labels"])
+        pull.add_to_assignees(meta["assignees"])
         for comment in pull_data["comments"]:
             pull.create_issue_comment(comment["body"])
