@@ -2,7 +2,7 @@
 import argparse
 import re
 import git
-from commit_map.map import CommitMap
+from src.map import CommitMap
 
 
 # creates a map from hg commit hash to git commit hash

@@ -7,7 +7,7 @@ The expected steps are as follows:
 * Run `<path to hg-fast-export.sh> -r <path to hg repo> --hg-hash` in the git folder
 * Adapt `config.py` to have an entry for the bitbucket-repository in `KNOWN_CMAP_PATHS`
 * Run `python3 hg-git-commit-map.py --repo <path to git folder> --bitbucket-repository <e.g. viperproject/silver>`
-* Push the git folder to Github
+* Push the local git repo to github
 * Adapt `config.py` to correctly capture the Bitbucket repos, their GitHub correspondance, and the number of issues
 * Run `python3 migrate-discussions.py --github-access-token <GitHub access token> --bitbucket-repository <e.g. viperproject/silver> --github-repository <e.g. fpoli/viper-silver>` to migrate the issues and pull requests (again for all repositories)
 

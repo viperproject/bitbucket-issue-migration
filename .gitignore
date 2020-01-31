@@ -2,3 +2,5 @@
 .vscode/
 __pycache__/
 *.py[cod]
+/migration_data/*
+!/migration_data/.gitkeep

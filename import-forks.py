@@ -2,7 +2,7 @@
 import argparse
 import re
 from hg_repo.repo import HgRepo
-from migrate.bitbucket import BitbucketExport
+from src.bitbucket import BitbucketExport
 
 
 def get_bitbucket_base_url():

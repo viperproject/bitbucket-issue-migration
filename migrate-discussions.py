@@ -4,9 +4,9 @@ from dateutil import parser
 import argparse
 from github import InputFileContent
 import config
-from migrate.bitbucket import BitbucketExport
-from migrate.github import GithubImport
-from commit_map.map import CommitMap
+from src.bitbucket import BitbucketExport
+from src.github import GithubImport
+from src.map import CommitMap
 
 
 EXPLICIT_ISSUE_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/issues*/(\d+)[^\s()\[\]{{}}]*'
@@ -798,7 +798,7 @@ def check(bexport, gimport, args):
 
 def create_parser():
     parser = argparse.ArgumentParser(
-        prog="migrate",
+        prog="migrate-discussion",
         description="Migrate Bitbucket issues and pull requests to Github"
     )
     parser.add_argument(
