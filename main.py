@@ -5,6 +5,9 @@ import os
 from subprocess import check_call
 import pathlib
 from send2trash import send2trash
+from github import Github, GithubException
+from getpass import getpass
+import datetime
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 MIGRATION_DATA_DIR = os.path.join(ROOT, "migration_data")
@@ -23,13 +26,25 @@ def execute(cmd, *args, **kwargs):
 
 
 def step(msg):
-    print("\n=== {}...".format(msg))
+    now = datetime.datetime.now()
+    time = now.strftime("%Y-%m-%d %H:%M:%S")
+    print("\n[{}] === {}...".format(time, msg))
+
+
+def is_github_repo_empty(github, grepo):
+    repo = github.get_repo(grepo)
+    try:
+        repo.get_contents("/")
+        return True
+    except GithubException.GithubException as e:
+        print("> " + e.args[1]["message"])
+        return e.args[1]["message"] == "This repository is empty."
 
 
 def create_parser():
     parser = argparse.ArgumentParser(
         prog="migrate",
-        description="Migrate from Bitbucket to Github"
+        description="Migrate mercurial repositories from Bitbucket to Github"
     )
     parser.add_argument(
         "-t", "--github-access-token",
@@ -48,8 +63,12 @@ def create_parser():
     )
     parser.add_argument(
         "--bitbucket-password",
-        help="Bitbucket password",
-        required=True
+        help="Bitbucket password"
+    )
+    parser.add_argument(
+        "bitbucket_repositories",
+        nargs="+",
+        help="List of the Bitbucket repositories that should migrate to Github"
     )
     return parser
 
@@ -58,7 +77,17 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
-    for brepo, grepo in config.KNOWN_REPO_MAPPING.items():
+    repositories_to_migrate = {
+        brepo: config.KNOWN_REPO_MAPPING[brepo]
+        for brepo in args.bitbucket_repositories
+    }
+
+    github = Github(args.github_access_token, timeout=30, retry=3, per_page=100)
+
+    if args.bitbucket_password is None:
+        args.bitbucket_password = getpass(prompt="Password of Bitbucket's user '{}': ".format(args.bitbucket_username))
+
+    for brepo, grepo in repositories_to_migrate.items():
         step("Cloning bitbucket repository '{}' to local mercurial repository".format(brepo))
         hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
         brepo_url = bitbucket_repo_url(brepo)
@@ -67,6 +96,7 @@ def main():
         pathlib.Path(hg_folder).mkdir(parents=True, exist_ok=True)
         execute("hg clone " + brepo_url + " " + hg_folder, cwd=MIGRATION_DATA_DIR)
 
+    for brepo, grepo in repositories_to_migrate.items():
         step("Importing forks of bitbucket repository '{}' into local mercurial repository".format(brepo))
         execute("./import-forks.py --repo {} --bitbucket-repository {} --bitbucket-username {} --bitbucket-password {}".format(
             hg_folder,
@@ -75,7 +105,8 @@ def main():
             args.bitbucket_password
         ), cwd=ROOT)
 
-        step("Preparing local git repository")
+    for brepo, grepo in repositories_to_migrate.items():
+        step("Preparing local git repository for '{}'".format(grepo))
         git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
         if os.path.isdir(git_folder):
             send2trash(git_folder)
@@ -83,33 +114,37 @@ def main():
         execute("git init", cwd=git_folder)
         execute("git config core.ignoreCase false", cwd=git_folder)
 
-        step("Converting local mercurial repository to git")
+    for brepo, grepo in repositories_to_migrate.items():
+        step("Converting local mercurial repository of '{}' to git".format(brepo))
         execute("{} -r {} --hg-hash".format(
             args.hg_fast_export_path,
             hg_folder
         ), cwd=git_folder)
 
+    for brepo, grepo in repositories_to_migrate.items():
         step("Pushing local git repository to github repository '{}'".format(grepo))
-        # TODO: check that the Github repository is empty
+        assert is_github_repo_empty(github, grepo), "Github repository '{}' is non-empty. Please delete and recreate it.".format(grepo)
         execute("git remote add origin {}".format(
             github_repo_url(grepo)
         ), cwd=git_folder)
-        execute("git push --set-upstream origin master -f", cwd=git_folder)
+        execute("git push --set-upstream origin master", cwd=git_folder)
         execute("git push --all origin", cwd=git_folder)
 
-        step("Mapping local mercurial commit hashes to git")
+    for brepo, grepo in repositories_to_migrate.items():
+        step("Mapping local mercurial commit hashes of '{}' to git".format(brepo))
         execute("./hg-git-commit-map.py --repo {} --bitbucket-repository {}".format(
             git_folder,
             brepo
         ), cwd=ROOT)
 
-    for brepo, grepo in config.KNOWN_REPO_MAPPING.items():
+    for brepo, grepo in repositories_to_migrate.items():
         step("Migrate isues and pull requests of bitbucket repository '{}' to github".format(brepo))
         execute("./migrate-discussions.py --github-access-token {} --bitbucket-repository {} --github-repository {}".format(
             args.github_access_token,
             brepo,
             grepo
         ), cwd=ROOT)
+
 
 if __name__ == "__main__":
     main()

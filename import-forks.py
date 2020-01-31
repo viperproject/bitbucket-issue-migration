@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 import argparse
 import re
 from hg_repo.repo import HgRepo
