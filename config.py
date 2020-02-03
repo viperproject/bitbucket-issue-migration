@@ -108,9 +108,9 @@ OPEN_ISSUE_OR_PULL_REQUEST_STATES = {
 # This information is used to convert links
 KNOWN_REPO_MAPPING = {
     "viperproject/silver": "viperproject/silver",
-    #"viperproject/carbon": "viperproject/carbon",
-    #"viperproject/silicon": "viperproject/silicon",
-    #"viperproject/viperserver": "viperproject/viperserver",
+    "viperproject/carbon": "viperproject/carbon",
+    "viperproject/silicon": "viperproject/silicon",
+    "viperproject/viperserver": "viperproject/viperserver",
 }
 
 # Mapping of known Bitbucket repos to their number of issues.
@@ -118,14 +118,14 @@ KNOWN_REPO_MAPPING = {
 # of PRs' IDs
 KNOWN_ISSUES_COUNT_MAPPING = {
     "viperproject/silver": 300,
-    #"viperproject/carbon": ,
-    #"viperproject/silicon": ,
-    #"viperproject/viperserver": ,
+    "viperproject/carbon": 295,
+    "viperproject/silicon": 405,
+    "viperproject/viperserver": 0,
 }
 
 KNOWN_CMAP_PATHS = {
     "viperproject/silver": "migration_data/silver_cmap.txt",
-    #"viperproject/carbon": "migration_data/carbon_cmap.txt",
-    #"viperproject/silicon": "migration_data/silicon_cmap.txt",
-    #"viperproject/viperserver": "migration_data/viperserver_cmap.txt",
+    "viperproject/carbon": "migration_data/carbon_cmap.txt",
+    "viperproject/silicon": "migration_data/silicon_cmap.txt",
+    "viperproject/viperserver": "migration_data/viperserver_cmap.txt",
 }

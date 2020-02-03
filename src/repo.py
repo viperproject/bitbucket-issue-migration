@@ -2,6 +2,7 @@ import os
 import subprocess
 import re
 
+
 class HgRepo:
     def __init__(self, path):
         self.path = path
@@ -16,24 +17,20 @@ class HgRepo:
             raise RuntimeError("cmd {} resulted in exit code {} ({})".format(" ".join(cmd), proc.returncode, err))
         return out
 
-
     def get_branch_names(self):
         res = self.hg_command("branches", "--template", "{branch};")
         branch_name_re = re.compile(r'([^;]*);')
         matches = branch_name_re.finditer(res)
         return [match.group(1) for match in matches]
 
-
     def hg_update(self, rev):
         self.hg_command("update", str(rev))
-
 
     def hg_branch(self, branch_name=None):
         args = ["branch"]
         if branch_name:
             args.append(branch_name)
         self.hg_command(*args)
-
 
     def hg_commit(self, msg):
         self.hg_command("commit", "-m", msg)

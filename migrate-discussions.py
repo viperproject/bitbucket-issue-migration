@@ -356,6 +356,7 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
     sb.append(">  **Pull request** :twisted_rightwards_arrows: created " + author_msg + "on " + created_on + "\n")
     if created_on != updated_on:
         sb.append("> Last updated on " + updated_on + "\n")
+    sb.append("> Original Bitbucket pull request id: {}\n".format(bpull["id"]))
 
     if bpull["participants"]:
         sb.append(">\n")

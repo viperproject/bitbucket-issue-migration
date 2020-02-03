@@ -38,7 +38,6 @@ def is_github_repo_empty(github, grepo):
         repo.get_contents("/")
         return False
     except GithubException as e:
-        print("> " + e.args[1]["message"])
         return e.args[1]["message"] == "This repository is empty."
 
 
@@ -98,6 +97,7 @@ def main():
         execute("hg clone " + brepo_url + " " + hg_folder, cwd=MIGRATION_DATA_DIR)
 
     for brepo, grepo in repositories_to_migrate.items():
+        hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
         step("Importing forks of bitbucket repository '{}' into local mercurial repository".format(brepo))
         execute("./import-forks.py --repo {} --bitbucket-repository {} --bitbucket-username {} --bitbucket-password {}".format(
             hg_folder,
@@ -117,6 +117,7 @@ def main():
 
     for brepo, grepo in repositories_to_migrate.items():
         step("Converting local mercurial repository of '{}' to git".format(brepo))
+        git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
         execute("{} -r {} --hg-hash".format(
             args.hg_fast_export_path,
             hg_folder
@@ -130,6 +131,7 @@ def main():
 
     for brepo, grepo in repositories_to_migrate.items():
         step("Pushing local git repository to github repository '{}'".format(grepo))
+        git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
         execute("git remote add origin {}".format(
             github_repo_url(grepo)
         ), cwd=git_folder)
@@ -138,6 +140,7 @@ def main():
 
     for brepo, grepo in repositories_to_migrate.items():
         step("Mapping local mercurial commit hashes of '{}' to git".format(brepo))
+        git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
         execute("./hg-git-commit-map.py --repo {} --bitbucket-repository {}".format(
             git_folder,
             brepo

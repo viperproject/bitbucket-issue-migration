@@ -144,7 +144,6 @@ class GithubImport:
             state=meta["state"],
             base=meta["base"],
         )
-        print("labels:", meta["labels"])
         pull.set_labels(*meta["labels"])
         pull.remove_from_assignees(*[
             x.name for x in pull.assignees
@@ -161,7 +160,6 @@ class GithubImport:
             base=meta["base"],
             head=meta["head"],
         )
-        print("labels:", meta["labels"])
         pull.set_labels(*meta["labels"])
         pull.add_to_assignees(*meta["assignees"])
         for comment in pull_data["comments"]:
