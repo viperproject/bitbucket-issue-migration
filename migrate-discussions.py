@@ -632,7 +632,10 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
             "pull": {
                 "title": bpull["title"],
                 "body": issue_body,
-                "assignees": [map_buser_to_guser(bpull["author"], check=True)],
+                "assignees": [
+                    guser for guser in [map_buser_to_guser(bpull["author"], check=True)]
+                    if guser is not None
+                ],
                 "closed": is_closed,
                 "labels": list(set(labels)),
                 "base": base_branch,
