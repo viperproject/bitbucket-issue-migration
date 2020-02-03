@@ -5,7 +5,8 @@ import os
 from subprocess import check_call
 import pathlib
 from send2trash import send2trash
-from github import Github, GithubException
+from github import Github
+from github.GithubException import GithubException
 from getpass import getpass
 import datetime
 
@@ -35,8 +36,8 @@ def is_github_repo_empty(github, grepo):
     repo = github.get_repo(grepo)
     try:
         repo.get_contents("/")
-        return True
-    except GithubException.GithubException as e:
+        return False
+    except GithubException as e:
         print("> " + e.args[1]["message"])
         return e.args[1]["message"] == "This repository is empty."
 
@@ -122,8 +123,13 @@ def main():
         ), cwd=git_folder)
 
     for brepo, grepo in repositories_to_migrate.items():
+        step("Checking github repository '{}'".format(grepo))
+        while not is_github_repo_empty(github, grepo):
+            print("Error: Github repository '{}' is non-empty. Please delete and recreate it.".format(grepo))
+            input("Press Enter to retry...")
+
+    for brepo, grepo in repositories_to_migrate.items():
         step("Pushing local git repository to github repository '{}'".format(grepo))
-        assert is_github_repo_empty(github, grepo), "Github repository '{}' is non-empty. Please delete and recreate it.".format(grepo)
         execute("git remote add origin {}".format(
             github_repo_url(grepo)
         ), cwd=git_folder)

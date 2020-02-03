@@ -380,7 +380,7 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
         source_brepo = source["repository"]["full_name"]
         source_bbranch = source["branch"]["name"]
         source_bhash = source["commit"]["hash"]
-        source_grepo = bexport.get_repo_full_name()
+        source_grepo = map_brepo_to_grepo(bexport.get_repo_full_name())
         source_gbranch = cmap.convert_branch_name(branch=source_bbranch, repo=source_brepo, default_repo=bexport.get_repo_full_name())
         source_ghash = cmap.convert_commit_hash(source_bhash)
         if source_ghash is None:
@@ -822,10 +822,6 @@ def create_parser():
         action='store_true'
     )
     parser.add_argument(
-        "--dev",
-        help="Do something special (development only)"
-    )
-    parser.add_argument(
         "--check",
         help="Check the configuration",
         action='store_true'
@@ -841,31 +837,6 @@ def main():
     cmap = CommitMap()
     print("Load mapping of mercurial commits to git...")
     cmap.load_from_disk()
-    if args.dev is not None:
-        number = int(args.dev)
-        bpull = bexport.get_pull(number)
-        existing_gpulls = gimport.get_pulls()
-        existing_gissues = gimport.get_issues()
-        issue_or_pull = construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args)
-        type = issue_or_pull["type"]
-        data = issue_or_pull["data"]
-        if type == "issue":
-            if number in existing_gissues:
-                print("Update github issue #{}...".format(number))
-                gimport.update_issue_with_comments(existing_gissues[number], data)
-            else:
-                print("Create github issue #{}...".format(number))
-                gimport.create_issue_with_comments(data)
-        elif type == "pull":
-            if number in existing_gpulls:
-                print("Update github pull request #{}...".format(number))
-                gimport.update_issue_with_comments(existing_gpulls[number], data)
-            else:
-                print("Create github pull request #{}...".format(number))
-                gimport.create_pull_with_comments(data)
-        else:
-            print("Error: unknown type '{}' for data '{}'".format(type, data))
-        return
     if args.check:
         check(bexport=bexport, gimport=gimport, args=args)
     else:
