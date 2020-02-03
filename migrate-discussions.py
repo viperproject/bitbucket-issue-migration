@@ -384,12 +384,18 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
         source_gbranch = cmap.convert_branch_name(branch=source_bbranch, repo=source_brepo, default_repo=bexport.get_repo_full_name())
         source_ghash = cmap.convert_commit_hash(source_bhash)
         if source_ghash is None:
-            print("Error: could not map mercurial commit '{}' (source of a PR) to git.".format(source_bhash))
-        sb.append("> Source: https://github.com/{grepo}/commit/{ghash} on [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch})\n".format(
-            grepo=source_grepo,
-            gbranch=source_gbranch,
-            ghash=source_ghash
-        ))
+            print("Warning: could not map mercurial commit '{}' (source of a PR) to git.".format(source_bhash))
+            sb.append("> Source: unidentified commit on [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch}) (Mercurial commit was `{bhash}`)\n".format(
+                grepo=source_grepo,
+                gbranch=source_gbranch,
+                bhash=source_bhash
+            ))
+        else:
+            sb.append("> Source: https://github.com/{grepo}/commit/{ghash} on [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch})\n".format(
+                grepo=source_grepo,
+                gbranch=source_gbranch,
+                ghash=source_ghash
+            ))
 
     destination = bpull["destination"]
     destination_brepo = destination["repository"]["full_name"]
