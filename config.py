@@ -5,13 +5,13 @@ USER_MAPPING = {
     "meilers": "marcoeilers",
     "arquintl": "arquintl",
     "gauravpartha": "gauravpartha",
+    "gaurav_p": "gauravpartha",
     "Felale": "Felalolf",
     "vakaras": "vakaras",
     "mschwerhoff": "mschwerhoff",
     "fabiopakk": "fabiopakk",
     "arshavir": "aterga",
     "dohrau": "dohrau",
-    # "gaurav_p": "gauravpartha",  # FIXME
     # "alexander_summers": "alexander_summers",  # TODO
     # "martin_clochard": "martin_clochard",  # TODO
 }
