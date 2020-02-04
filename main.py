@@ -23,6 +23,7 @@ def github_repo_url(repo):
 
 
 def execute(cmd, *args, **kwargs):
+    print("> '{}'".format(cmd))
     check_call(cmd, *args, shell=True, **kwargs)
 
 
@@ -132,10 +133,10 @@ def main():
         step("Converting local mercurial repository of '{}' to git".format(brepo))
         hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
         git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
-        execute("{} -A {} -r {} --hg-hash".format(
+        execute("{} -r {} --hg-hash -A {}".format(
             args.hg_fast_export_path,
-            args.hg_authors_map,
-            hg_folder
+            hg_folder,
+            args.hg_authors_map
         ), cwd=git_folder)
 
     for brepo, grepo in repositories_to_migrate.items():
