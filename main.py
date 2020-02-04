@@ -132,10 +132,10 @@ def main():
         step("Converting local mercurial repository of '{}' to git".format(brepo))
         hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
         git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
-        execute("{} -r {} -A {} --hg-hash".format(
+        execute("{} -A {} -r {} --hg-hash".format(
             args.hg_fast_export_path,
-            hg_folder,
-            args.hg_authors_map
+            args.hg_authors_map,
+            hg_folder
         ), cwd=git_folder)
 
     for brepo, grepo in repositories_to_migrate.items():
