@@ -1,57 +1,19 @@
 # Github only accepts assignees from valid users. We map those users from bitbucket.
 USER_MAPPING = {
-    #"Felale": "Felale"
-    #"a_helfenstein": "a_helfenstein"
-    #"mnovacek": "mnovacek"
-    #"brotobia": "brotobia"
-    #"gishors": "gishors"
-    #"User a29c9": "User a29c9"
-    #"OmerSakar": "OmerSakar"
-    #"evolutics": "evolutics"
-    #"abdelzaher": "abdelzaher"
-    #"maurobringolf": "maurobringolf"
-    #"flurischt": "flurischt"
-    #"Korbinian Breu": "Korbinian Breu"
-    #"wuestholz": "wuestholz"
-    #"pgruntz": "pgruntz"
-    #"martin_clochard": "martin_clochard"
-    #"smbe19": "smbe19"
-    #"stefanheule": "stefanheule"
-    #"aurecchia": "aurecchia"
-    #"bbrodowsky": "bbrodowsky"
-    #"moknuese": "moknuese"
-    #"Soothsilver": "Soothsilver"
-    #"severinh": "severinh"
-    #"caterinaurban": "caterinaurban"
-    #"gaurav_p": "gaurav_p"
-    #"rukaelin": "rukaelin"
-    #"arshavir": "arshavir"
-    #"a2scale": "a2scale"
-    #"fabiopakk": "fabiopakk"
-    #"meilers": "marcoeilers"
-    #"vakaras": "vakaras"
-    #"alexander_summers": "alexander_summers"
-    #"RKor": "RKor"
-    #"mousam05": "mousam05"
-    #"tierriminator": "tierriminator"
-    #"streun": "streun"
-    #"juhaszu": "juhaszu"
-    #"seraiah": "seraiah"
-    #"fpoli_eth": "fpoli"
-    #"robinsierra": "robinsierra"
-    #"fhahn": "fhahn"
-    #"nilsbecker_": "nilsbecker_"
-    #"ntruessel": "ntruessel"
-    #"mueller55": "mueller55"
-    #"mschwerhoff": "mschwerhoff"
-    #"klauserc": "klauserc"
-    #"arquintl": "arquintl"
-    #"sahil_rishi": "sahil_rishi"
-    #"dohrau": "dohrau"
-    #"krantikiran": "krantikiran",
-    #"HMulder": "",
-    #"Ansgar92": "",
-    #"robmeier": "",
+    "fpoli_eth": "fpoli",
+    "mueller55": "mueller55",
+    "meilers": "marcoeilers",
+    "arquintl": "arquintl",
+    "gauravpartha": "gauravpartha",
+    "Felale": "Felalolf",
+    "vakaras": "vakaras",
+    "mschwerhoff": "mschwerhoff",
+    "fabiopakk": "fabiopakk",
+    "arshavir": "aterga",
+    "dohrau": "dohrau",
+    # "gaurav_p": "gauravpartha",  # FIXME
+    # "alexander_summers": "alexander_summers",  # TODO
+    # "martin_clochard": "martin_clochard",  # TODO
 }
 
 # We map bitbucket's issue "kind" to github "labels".
