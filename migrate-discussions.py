@@ -275,7 +275,15 @@ def convert_date(bb_date):
 def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args):
     sb = []
     comment_created_on = time_string_to_date_string(bcomment["created_on"])
-    sb.append("> **@" + map_buser_to_guser(bcomment["user"]) + "** commented on " + comment_created_on + "\n")
+    if bcomment["user"] is None:
+        sb.append("> A former Bitbucket user (account deleted) commented on " + comment_created_on + "\n")
+    else:
+        guser = map_buser_to_guser(bcomment["user"])
+        if guser is None:
+            print("Warning: bitbucket user '{}' is not in config.USER_MAPPING".format(bcomment["user"]["nickname"]))
+            sb.append("> Bitbucket user **" + bcomment["user"]["nickname"] + "** commented on " + comment_created_on + "\n")
+        else:
+            sb.append("> **@" + guser + "** commented on " + comment_created_on + "\n")
     if "inline" in bcomment:
         inline_data = bcomment["inline"]
         file_path = inline_data["path"]
