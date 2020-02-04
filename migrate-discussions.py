@@ -115,8 +115,8 @@ def replace_links_to_users(body):
         buser = match.group(1)
         guser = lookup_user(buser)
         if guser is None:
-            # leave username unchanged:
-            return '@' + 'ignore_' + buser
+            # leave username unchanged, but remove the @:
+            return buser
         return '@' + guser
     return MENTION_RE.sub(replace_user, body)
 
@@ -168,21 +168,19 @@ def map_bstate_to_gstate(bissue):
         return "closed"
 
 
-def lookup_user(buser_nickname, check=False):
+def lookup_user(buser_nickname):
     if buser_nickname not in config.USER_MAPPING:
-        if check:
-            return None
-        else:
-            return "ignore_" + buser_nickname
+        return None
+    # TODO: remove the "ignore_" before the official migration
     return "ignore_" + config.USER_MAPPING[buser_nickname]
 
 
-def map_buser_to_guser(buser, check=False):
+def map_buser_to_guser(buser):
     if buser is None:
         return None
     else:
         nickname = buser["nickname"]
-        return lookup_user(nickname, check=check)
+        return lookup_user(nickname)
 
 
 def map_brepo_to_grepo(brepo):
@@ -257,6 +255,23 @@ def map_content(content, cmap, args):
     return replace_implicit_commit_hashes(tmp, cmap)
 
 
+def format_buser_mention(buser, capitalize=False):
+    if buser is None:
+        if capitalize:
+            return "A former bitbucket user (account deleted)"
+        else:
+            return "a former bitbucket user (account deleted)"
+    else:
+        guser = map_buser_to_guser(buser)
+        if guser is None:
+            if capitalize:
+                return "Bitbucket user **" + buser["nickname"] + "**"
+            else:
+                return "bitbucket user **" + buser["nickname"] + "**"
+        else:
+            return "**@" + guser + "**"
+
+
 def time_string_to_date_string(timestring):
     datetime = parser.parse(timestring)
     return datetime.strftime("%Y-%m-%d %H:%M")
@@ -275,15 +290,7 @@ def convert_date(bb_date):
 def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args):
     sb = []
     comment_created_on = time_string_to_date_string(bcomment["created_on"])
-    if bcomment["user"] is None:
-        sb.append("> A former Bitbucket user (account deleted) commented on " + comment_created_on + "\n")
-    else:
-        guser = map_buser_to_guser(bcomment["user"])
-        if guser is None:
-            print("Warning: bitbucket user '{}' is not in config.USER_MAPPING".format(bcomment["user"]["nickname"]))
-            sb.append("> Bitbucket user **" + bcomment["user"]["nickname"] + "** commented on " + comment_created_on + "\n")
-        else:
-            sb.append("> **@" + guser + "** commented on " + comment_created_on + "\n")
+    sb.append("> " + format_buser_mention(bcomment["user"], capitalize=True) + " commented on " + comment_created_on + "\n")
     if "inline" in bcomment:
         inline_data = bcomment["inline"]
         file_path = inline_data["path"]
@@ -321,7 +328,7 @@ def construct_gissue_body(bissue, battachments, attachment_gist_by_issue_id, cma
     # Header
     created_on = time_string_to_date_string(bissue["created_on"])
     updated_on = time_string_to_date_string(bissue["updated_on"])
-    sb.append("> Created by **@" + map_buser_to_guser(bissue["reporter"]) + "** on " + created_on + "\n")
+    sb.append("> Created by " + format_buser_mention(bissue["reporter"]) + " on " + created_on + "\n")
     if created_on != updated_on:
         sb.append("> Last updated on " + updated_on + "\n")
 
@@ -360,7 +367,7 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
     if bpull["author"] is None:
         author_msg = ""
     else:
-        author_msg = "by **@" + map_buser_to_guser(bpull["author"]) + "** "
+        author_msg = "by " + format_buser_mention(bpull["author"]) + " "
     sb.append(">  **Pull request** :twisted_rightwards_arrows: created " + author_msg + "on " + created_on + "\n")
     if created_on != updated_on:
         sb.append("> Last updated on " + updated_on + "\n")
@@ -371,7 +378,7 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
         sb.append("> Participants:\n")
         sb.append(">\n")
         for participant in bpull["participants"]:
-            sb.append("> * **@{}**".format(map_buser_to_guser(participant["user"])))
+            sb.append("> * {}".format(format_buser_mention(participant["user"])))
             if participant["role"] == "REVIEWER":
                 sb.append(" (reviewer)")
             if participant["approved"]:
@@ -450,8 +457,8 @@ def construct_gcomment_body_for_change(bchange):
     blacklist = ["content", "title", "assignee_account_id"]
     for changed_key, change in bchange["changes"].items():
         if changed_key not in blacklist:
-            sb.append("> **@{}** changed `{}` from `{}` to `{}` on {}\n".format(
-                map_buser_to_guser(bchange["user"]),
+            sb.append("> {} changed `{}` from `{}` to `{}` on {}\n".format(
+                format_buser_mention(bchange["user"], capitalize=True),
                 changed_key,
                 change["old"] if change["old"] else "(none)",
                 change["new"] if change["new"] else "(none)",
@@ -468,8 +475,8 @@ def construct_gcomment_body_for_update_activity(update_activity):
             on_date
         )
     else:
-        return "> **@{}** changed the status to `{}` on {}".format(
-            map_buser_to_guser(update_activity["author"]),
+        return "> {} changed the status to `{}` on {}".format(
+            format_buser_mention(update_activity["author"], capitalize=True),
             update_activity["state"],
             on_date
         )
@@ -477,8 +484,8 @@ def construct_gcomment_body_for_update_activity(update_activity):
 
 def construct_gcomment_body_for_approval_activity(approval_activity):
     on_date = time_string_to_date_string(approval_activity["date"])
-    return "> **@{}** approved :heavy_check_mark: the pull request on {}".format(
-        map_buser_to_guser(approval_activity["user"]),
+    return "> {} approved :heavy_check_mark: the pull request on {}".format(
+        format_buser_mention(approval_activity["user"], capitalize=True),
         on_date
     )
 
@@ -591,7 +598,7 @@ def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id, c
             "body": issue_body,
             "created_at": convert_date(bissue["created_on"]),
             "updated_at": convert_date(bissue["updated_on"]),
-            "assignee": map_buser_to_guser(bissue["assignee"], check=True),
+            "assignee": map_buser_to_guser(bissue["assignee"]),
             "closed": map_bstate_to_gstate(bissue) == "closed",
             "labels": list(set(labels)),
         },
@@ -623,7 +630,7 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
                 "body": issue_body,
                 "created_at": convert_date(bpull["created_on"]),
                 "updated_at": convert_date(bpull["updated_on"]),
-                "assignee": map_buser_to_guser(bpull["author"], check=True),
+                "assignee": map_buser_to_guser(bpull["author"]),
                 "closed": is_closed,
                 "labels": list(set(labels)),
             },
@@ -642,7 +649,7 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
                 "title": bpull["title"],
                 "body": issue_body,
                 "assignees": [
-                    guser for guser in [map_buser_to_guser(bpull["author"], check=True)]
+                    guser for guser in [map_buser_to_guser(bpull["author"])]
                     if guser is not None
                 ],
                 "closed": is_closed,

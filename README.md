@@ -13,7 +13,7 @@ The expected steps are as follows:
 
 Alternative steps:
 * Set the `USER_MAPPING`, `KNOWN_REPO_MAPPING`, `KNOWN_ISSUES_COUNT_MAPPING`, and `KNOWN_CMAP_PATHS` variables in `config.py`
-* Run `./main.py --github-access-token=<github's personal access token> --hg-fast-export-path=<path to hg-fast-export.sh> --bitbucket-username=<bitbucket username> [space separated list of bitbucket repositories to migrate]`
+* Run `./main.py --github-access-token=<github's personal access token> --hg-fast-export-path=<path to hg-fast-export.sh> --hg-authors-map=<path to fast-export's authors mapping file> --bitbucket-username=<bitbucket username> [space separated list of bitbucket repositories to migrate]`
 
 This project reuses some code from https://github.com/jeffwidman/bitbucket-issue-migration and https://github.com/fkirc/bitbucket-issues-to-github
 

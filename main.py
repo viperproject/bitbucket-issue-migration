@@ -57,6 +57,11 @@ def create_parser():
         required=True
     )
     parser.add_argument(
+        "--hg-authors-map",
+        help="Path to the author mapping file required by hg-fast-export.sh",
+        required=True
+    )
+    parser.add_argument(
         "--bitbucket-username",
         help="Bitbucket username",
         required=True
@@ -81,8 +86,16 @@ def main():
         brepo: config.KNOWN_REPO_MAPPING[brepo]
         for brepo in args.bitbucket_repositories
     }
+    print("Bitbucket repositories to be migrated: {}".format(
+        ", ".join(repositories_to_migrate.keys())
+    ))
 
     github = Github(args.github_access_token, timeout=30, retry=3, per_page=100)
+
+    args.hg_authors_map = os.path.abspath(args.hg_authors_map)
+    while not os.path.isfile(args.hg_authors_map):
+        print("Error: The author mapping file '{}' does not exist. Please create it.".format(args.hg_authors_map))
+        input("Press Enter to retry...")
 
     if args.bitbucket_password is None:
         args.bitbucket_password = getpass(prompt="Password of Bitbucket's user '{}': ".format(args.bitbucket_username))
@@ -117,10 +130,12 @@ def main():
 
     for brepo, grepo in repositories_to_migrate.items():
         step("Converting local mercurial repository of '{}' to git".format(brepo))
+        hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
         git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
-        execute("{} -r {} --hg-hash".format(
+        execute("{} -r {} -A {} --hg-hash".format(
             args.hg_fast_export_path,
-            hg_folder
+            hg_folder,
+            args.hg_authors_map
         ), cwd=git_folder)
 
     for brepo, grepo in repositories_to_migrate.items():
