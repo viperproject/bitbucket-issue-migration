@@ -12,8 +12,8 @@ USER_MAPPING = {
     "fabiopakk": "fabiopakk",
     "arshavir": "aterga",
     "dohrau": "dohrau",
+    "martin_clochard": "MartinClochard",
     # "alexander_summers": "alexander_summers",  # TODO
-    # "martin_clochard": "martin_clochard",  # TODO
 }
 
 # We map bitbucket's issue "kind" to github "labels".
