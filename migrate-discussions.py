@@ -693,12 +693,16 @@ def bitbucket_to_github(bexport, gimport, cmap, args):
     for bissue in bissues:
         issue_id = bissue["id"]
         print("Prepare github issue #{} from bitbucket issue...".format(issue_id))
+        if issue_id != len(issues_and_pulls) + 1:
+            print("Error: github issue #{} will actually receive id #{}".format(issue_id, len(issues_and_pulls) + 1))
         gissue = construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id, cmap, args)
         issues_and_pulls.append({"type": "issue", "data": gissue})
 
     for bpull in bpulls:
         issue_id = bpull["id"] + pulls_id_offset
         print("Prepare github issue #{} from bitbucket pull request...".format(issue_id))
+        if issue_id != len(issues_and_pulls) + 1:
+            print("Error: github issue #{} will actually receive id #{}".format(issue_id, len(issues_and_pulls) + 1))
         gissue_or_gpull = construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args)
         issues_and_pulls.append(gissue_or_gpull)
 
