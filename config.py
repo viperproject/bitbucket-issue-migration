@@ -13,7 +13,7 @@ USER_MAPPING = {
     "arshavir": "aterga",
     "dohrau": "dohrau",
     "martin_clochard": "MartinClochard",
-    # "alexander_summers": "alexander_summers",  # TODO
+    "alexander_summers": "alexanderjsummers"
 }
 
 # We map bitbucket's issue "kind" to github "labels".
@@ -39,6 +39,7 @@ COMPONENT_MAPPING = {
     "Consistency": "consistency",
     "Triggers": "triggers",
     "silver-obligations": "silver-obligations",
+    "Magic Wands": "magic-wands",
 }
 
 # The only github states are "open" and "closed".
