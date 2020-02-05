@@ -77,6 +77,11 @@ def create_parser():
         help="Bitbucket password"
     )
     parser.add_argument(
+        "--skip-stuff",
+        help="Skip some stuff (development only!)",
+        action="store_true"
+    )
+    parser.add_argument(
         "bitbucket_repositories",
         nargs="+",
         help="List of the Bitbucket repositories that should migrate to Github"
@@ -111,44 +116,60 @@ def main():
     if args.bitbucket_password is None:
         args.bitbucket_password = getpass(prompt="Password of Bitbucket's user '{}': ".format(args.bitbucket_username))
 
-    for brepo, grepo in repositories_to_migrate.items():
-        step("Cloning bitbucket repository '{}' to local mercurial repository".format(brepo))
-        hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
-        brepo_url = bitbucket_repo_url(brepo)
-        if os.path.isdir(hg_folder):
-            send2trash(hg_folder)
-        pathlib.Path(hg_folder).mkdir(parents=True, exist_ok=True)
-        execute("hg clone " + brepo_url + " " + hg_folder, cwd=MIGRATION_DATA_DIR)
+    if not args.skip_stuff:
+        for brepo, grepo in repositories_to_migrate.items():
+            step("Cloning bitbucket repository '{}' to local mercurial repository".format(brepo))
+            hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
+            brepo_url = bitbucket_repo_url(brepo)
+            if os.path.isdir(hg_folder):
+                send2trash(hg_folder)
+            pathlib.Path(hg_folder).mkdir(parents=True, exist_ok=True)
+            execute("hg clone " + brepo_url + " " + hg_folder, cwd=MIGRATION_DATA_DIR)
 
-    for brepo, grepo in repositories_to_migrate.items():
-        hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
-        step("Importing forks of bitbucket repository '{}' into local mercurial repository".format(brepo))
-        execute("./import-forks.py --repo {} --bitbucket-repository {} --bitbucket-username {} --bitbucket-password {}".format(
-            hg_folder,
-            brepo,
-            args.bitbucket_username,
-            args.bitbucket_password
-        ), cwd=ROOT)
+        for brepo, grepo in repositories_to_migrate.items():
+            hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
+            step("Importing forks of bitbucket repository '{}' into local mercurial repository".format(brepo))
+            execute("./import-forks.py --verbose --repo {} --bitbucket-repository {} --bitbucket-username {} --bitbucket-password {}".format(
+                hg_folder,
+                brepo,
+                args.bitbucket_username,
+                args.bitbucket_password
+            ), cwd=ROOT)
 
-    for brepo, grepo in repositories_to_migrate.items():
-        step("Preparing local git repository for '{}'".format(grepo))
-        git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
-        if os.path.isdir(git_folder):
-            send2trash(git_folder)
-        pathlib.Path(git_folder).mkdir(parents=True, exist_ok=True)
-        execute("git init", cwd=git_folder)
-        execute("git config core.ignoreCase false", cwd=git_folder)
+        for brepo, grepo in repositories_to_migrate.items():
+            step("Preparing local git repository for '{}'".format(grepo))
+            git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
+            if os.path.isdir(git_folder):
+                send2trash(git_folder)
+            pathlib.Path(git_folder).mkdir(parents=True, exist_ok=True)
+            execute("git init", cwd=git_folder)
+            execute("git config core.ignoreCase false", cwd=git_folder)
 
-    for brepo, grepo in repositories_to_migrate.items():
-        step("Converting local mercurial repository of '{}' to git".format(brepo))
-        hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
-        git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
-        execute("{} -r {} -A {} -B {} --hg-hash ".format(
-            args.hg_fast_export_path,
-            hg_folder,
-            args.hg_authors_map,
-            args.hg_branches_map
-        ), cwd=git_folder)
+        for brepo, grepo in repositories_to_migrate.items():
+            step("Converting local mercurial repository of '{}' to git".format(brepo))
+            hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
+            git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
+            execute("{} -r {} -A {} -B {} --hg-hash ".format(
+                args.hg_fast_export_path,
+                hg_folder,
+                args.hg_authors_map,
+                args.hg_branches_map
+            ), cwd=git_folder)
+
+        for brepo, grepo in repositories_to_migrate.items():
+            step("Mapping local mercurial commit hashes of '{}' to git".format(brepo))
+            git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
+            execute("./hg-git-commit-map.py --repo {} --bitbucket-repository {}".format(
+                git_folder,
+                brepo
+            ), cwd=ROOT)
+
+        for brepo, grepo in repositories_to_migrate.items():
+            step("Adding remote github '{}' to local git repository".format(grepo))
+            git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
+            execute("git remote add origin {}".format(
+                github_repo_url(grepo)
+            ), cwd=git_folder)
 
     for brepo, grepo in repositories_to_migrate.items():
         step("Checking github repository '{}'".format(grepo))
@@ -159,19 +180,8 @@ def main():
     for brepo, grepo in repositories_to_migrate.items():
         step("Pushing local git repository to github repository '{}'".format(grepo))
         git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
-        execute("git remote add origin {}".format(
-            github_repo_url(grepo)
-        ), cwd=git_folder)
         execute("git push --set-upstream origin master", cwd=git_folder)
         execute("git push --all origin", cwd=git_folder)
-
-    for brepo, grepo in repositories_to_migrate.items():
-        step("Mapping local mercurial commit hashes of '{}' to git".format(brepo))
-        git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
-        execute("./hg-git-commit-map.py --repo {} --bitbucket-repository {}".format(
-            git_folder,
-            brepo
-        ), cwd=ROOT)
 
     for brepo, grepo in repositories_to_migrate.items():
         step("Migrate isues and pull requests of bitbucket repository '{}' to github".format(brepo))
