@@ -91,6 +91,12 @@ class GithubImport:
             import_data = get_request_json(import_data["url"], headers=headers)
             import_status = import_data["status"]
 
+        if import_status != "imported":
+            print("Warning: import status is '{}'.".format(import_status))
+        if import_status == "failed":
+            print("Retrying...".format(import_status))
+            self.slow_create_issue_with_comments(issue_data)
+
     def update_issue_comments(self, issue, comments_data):
         issue_id = issue.number
         num_comments = len(comments_data)
@@ -114,6 +120,17 @@ class GithubImport:
     def update_issue_with_comments(self, issue, issue_data):
         meta = issue_data["issue"]
         issue.edit(
+            title=meta["title"],
+            body=meta["body"],
+            labels=meta["labels"],
+            state="closed" if meta["closed"] else "open",
+            assignees=[] if meta["assignee"] is None else [meta["assignee"]]
+        )
+        self.update_issue_comments(issue, issue_data["comments"])
+
+    def slow_create_issue_with_comments(self, issue_data):
+        meta = issue_data["issue"]
+        issue = self.repo.create_issue(
             title=meta["title"],
             body=meta["body"],
             labels=meta["labels"],
