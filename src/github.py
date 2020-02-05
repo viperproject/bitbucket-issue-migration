@@ -1,3 +1,4 @@
+from requests.packages.urllib3.util.retry import Retry
 from github import Github, enable_console_debug_logging
 from github.GithubException import UnknownObjectException
 from time import sleep
@@ -10,7 +11,13 @@ class GithubImport:
         if debug:
             enable_console_debug_logging()
         self.access_token = access_token
-        self.github = Github(access_token, timeout=30, retry=3, per_page=100)
+        retry = Retry(
+            connect=5,
+            read=5,
+            backoff_factor=0.3,
+            status_forcelist=(500, 502, 503, 504)
+        )
+        self.github = Github(access_token, timeout=30, retry=retry, per_page=300)
         try:
             self.repo = self.github.get_repo(repository)
         except UnknownObjectException:
