@@ -530,15 +530,21 @@ def construct_gist_from_bissue_attachments(bissue, bexport):
 
     for name in battachments.keys():
         content = bexport.get_issue_attachment_content(issue_id, name)
-        if len(content) > 500 * 1000:
-            print("Warning: file '{}' of bitbucket issue {}/#{} is too big and cannot be uploaded as a gist file. This has to be done manually.".format(
+        if len(content) == 0:
+            print("Warning: file '{}' of bitbucket issue {}/#{} is empty.".format(
                 name,
                 bexport.get_repo_full_name(),
                 issue_id
             ))
-            gist_files[name] = InputFileContent("(too big)")
-        else:
-            gist_files[name] = InputFileContent(content)
+            content = "(empty)"
+        elif len(content) > 500 * 1000:
+            print("Error: file '{}' of bitbucket issue {}/#{} is too big and cannot be uploaded as a gist file. This has to be done manually.".format(
+                name,
+                bexport.get_repo_full_name(),
+                issue_id
+            ))
+            content = "(too big)"
+        gist_files[name] = InputFileContent(content)
 
     return {
         "description": gist_description,
