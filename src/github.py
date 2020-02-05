@@ -134,9 +134,9 @@ class GithubImport:
             title=meta["title"],
             body=meta["body"],
             labels=meta["labels"],
-            state="closed" if meta["closed"] else "open",
             assignees=[] if meta["assignee"] is None else [meta["assignee"]]
         )
+        issue.edit(state="closed" if meta["closed"] else "open")
         self.update_issue_comments(issue, issue_data["comments"])
 
     def update_pull_comments(self, pull, comments_data):
