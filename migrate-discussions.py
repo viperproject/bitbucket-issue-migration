@@ -676,6 +676,22 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
         return {"type": "pull", "data": pull_data}
 
 
+def construct_empty_gissue(issue_id, from_bpull=False):
+    issue_data = {
+        "issue": {
+            "title": "Empty issue #{}".format(issue_id),
+            "body": "(empty)",
+            "created_at": "2020-01-01T12:00:00Z",
+            "updated_at": "2020-01-01T12:00:00Z",
+            "assignee": None,
+            "closed": True,
+            "labels": ["pull request"] if from_bpull else [],
+        },
+        "comments": []
+    }
+    return {"type": "issue", "data": issue_data}
+
+
 def bitbucket_to_github(bexport, gimport, cmap, args):
     brepo_full_name = bexport.get_repo_full_name()
     issues_and_pulls = []
@@ -707,16 +723,20 @@ def bitbucket_to_github(bexport, gimport, cmap, args):
     for bissue in bissues:
         issue_id = bissue["id"]
         print("Prepare github issue #{} from bitbucket issue...".format(issue_id))
-        if issue_id != len(issues_and_pulls) + 1:
-            print("Error: github issue #{} will actually receive id #{}".format(issue_id, len(issues_and_pulls) + 1))
+        while issue_id > len(issues_and_pulls) + 1:
+            print("Warning: There is no bitbucket issue with id #{}".format(len(issues_and_pulls) + 1))
+            print("Creating an empty github issue...")
+            issues_and_pulls.append(construct_empty_gissue(len(issues_and_pulls) + 1, from_bpull=False))
         gissue = construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id, cmap, args)
         issues_and_pulls.append({"type": "issue", "data": gissue})
 
     for bpull in bpulls:
         issue_id = bpull["id"] + pulls_id_offset
         print("Prepare github issue #{} from bitbucket pull request...".format(issue_id))
-        if issue_id != len(issues_and_pulls) + 1:
-            print("Error: github issue #{} will actually receive id #{}".format(issue_id, len(issues_and_pulls) + 1))
+        while issue_id > len(issues_and_pulls) + 1:
+            print("Warning: There is no bitbucket pull request with id #{}.".format(len(issues_and_pulls) + 1 - pulls_id_offset))
+            print("Creating an empty github issue...")
+            issues_and_pulls.append(construct_empty_gissue(len(issues_and_pulls) + 1, from_bpull=True))
         gissue_or_gpull = construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args)
         issues_and_pulls.append(gissue_or_gpull)
 
