@@ -1,19 +1,19 @@
 # Github only accepts assignees from valid users. We map those users from bitbucket.
 USER_MAPPING = {
-    "fpoli_eth": "fpoli",
-    "mueller55": "mueller55",
-    "meilers": "marcoeilers",
-    "arquintl": "arquintl",
-    "gauravpartha": "gauravpartha",
-    "gaurav_p": "gauravpartha",
-    "Felale": "Felalolf",
-    "vakaras": "vakaras",
-    "mschwerhoff": "mschwerhoff",
-    "fabiopakk": "fabiopakk",
-    "arshavir": "aterga",
-    "dohrau": "dohrau",
-    "martin_clochard": "MartinClochard",
-    "alexander_summers": "alexanderjsummers"
+    # "fpoli_eth": "fpoli",
+    # "mueller55": "mueller55",
+    # "meilers": "marcoeilers",
+    # "arquintl": "arquintl",
+    # "gauravpartha": "gauravpartha",
+    # "gaurav_p": "gauravpartha",
+    # "Felale": "Felalolf",
+    # "vakaras": "vakaras",
+    # "mschwerhoff": "mschwerhoff",
+    # "fabiopakk": "fabiopakk",
+    # "arshavir": "aterga",
+    # "dohrau": "dohrau",
+    # "martin_clochard": "MartinClochard",
+    # "alexander_summers": "alexanderjsummers"
 }
 
 # We map bitbucket's issue "kind" to github "labels".
@@ -39,7 +39,14 @@ COMPONENT_MAPPING = {
     "Consistency": "consistency",
     "Triggers": "triggers",
     "silver-obligations": "silver-obligations",
+    "Examples": "examples",
+    "Functions": "functions",
+    "Logging, Reporting, IDE": "logging-reporting-ide",
     "Magic Wands": "magic-wands",
+    "Permissions": "permissions",
+    "Quantified Permissions": "quantified-permissions",
+    "Silver": "silver",
+    "Z3": "z3"
 }
 
 # The only github states are "open" and "closed".
