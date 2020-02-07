@@ -638,6 +638,25 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
 
     is_closed = map_bstate_to_gstate(bpull) == "closed"
     if is_closed:
+        generate_gissue = True
+    else:
+        generate_gissue = False
+        base_branch = cmap.convert_branch_name(bpull["destination"]["branch"]["name"])
+        head_branch = cmap.convert_branch_name(
+            branch=bpull["source"]["branch"]["name"],
+            repo=bpull["source"]["repository"]["full_name"],
+            default_repo=bexport.get_repo_full_name()
+        )
+        # Don't open a Github PR if the base or head branch is unknown
+        if base_branch is None or head_branch is None:
+            print((
+                "Warning: bitbucket pull request #{} is open but the source "
+                "or destination branch does not exist. Consider closing the "
+                "pull request."
+            ).format(bpull["id"]))
+        generate_gissue = base_branch is None or head_branch is None
+
+    if generate_gissue:
         issue_data = {
             "issue": {
                 "title": bpull["title"],
@@ -679,8 +698,8 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
 def construct_empty_gissue(issue_id, from_bpull=False):
     issue_data = {
         "issue": {
-            "title": "Empty issue #{}".format(issue_id),
-            "body": "(empty)",
+            "title": "Deleted issue #{}".format(issue_id),
+            "body": "(deleted)",
             "created_at": "2020-01-01T12:00:00Z",
             "updated_at": "2020-01-01T12:00:00Z",
             "assignee": None,

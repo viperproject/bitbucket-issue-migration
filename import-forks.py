@@ -45,7 +45,7 @@ def get_fork_commits(bexport, args):
         if exists:
             fork_commits.append(ForkCommit(get_fork_name(pr), get_fork_rev_hash(pr)))
         else:
-            print("commit {} of fork {} does not exist => skipped".format(get_fork_rev_hash(pr), get_fork_name(pr)))
+            print("Warning: commit {} of fork {} does not exist => skipped".format(get_fork_rev_hash(pr), get_fork_name(pr)))
     return fork_commits
 
 

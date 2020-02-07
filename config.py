@@ -35,10 +35,10 @@ PRIORITY_MAPPING = {
 
 # We map bitbucket's issue "component" to github "labels".
 COMPONENT_MAPPING = {
-    "Parser": "parser",
     "Consistency": "consistency",
-    "Triggers": "triggers",
+    "Parser": "parser",
     "silver-obligations": "silver-obligations",
+    "Triggers": "triggers",
     "Examples": "examples",
     "Functions": "functions",
     "Logging, Reporting, IDE": "logging-reporting-ide",
@@ -88,9 +88,9 @@ KNOWN_REPO_MAPPING = {
 # This information is used to correctly account for the offset
 # of PRs' IDs
 KNOWN_ISSUES_COUNT_MAPPING = {
-    "viperproject/silver": 300,
+    "viperproject/silver": 301,
     "viperproject/carbon": 295,
-    "viperproject/silicon": 405,
+    "viperproject/silicon": 406,
     "viperproject/viperserver": 0,
 }
 
