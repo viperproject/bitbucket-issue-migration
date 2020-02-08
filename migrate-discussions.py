@@ -790,8 +790,12 @@ def bitbucket_to_github(bexport, gimport, cmap, args):
             print("Error: unknown type '{}' for data '{}'".format(type, data))
 
     # Final checks
-    if len(bissues) + len(bpulls) != gimport.get_issues_count() + gimport.get_pulls_count():
-        print("Error: the number of Github issues and pull requests seems to be wrong.")
+    if len(bissues) + len(bpulls) != gimport.get_issues_count():
+        print("Error: the number of Github issues and pull requests seems to be wrong ({} + {} != {}).".format(
+            len(bissues),
+            len(bpulls),
+            gimport.get_issues_count()
+        ))
 
 
 def check(bexport, gimport, args):
