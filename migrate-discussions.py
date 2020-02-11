@@ -401,13 +401,13 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
         source_ghash = cmap.convert_commit_hash(source_bhash)
         if source_ghash is None:
             print("Warning: could not map mercurial commit '{}' (source of a PR) to git.".format(source_bhash))
-            sb.append("> Source: unidentified commit on [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch}) (Mercurial commit was `{bhash}`)\n".format(
+            sb.append("> Source: unidentified commit on branch `{gbranch}` (Mercurial commit was `{bhash}`)\n".format(
                 grepo=source_grepo,
                 gbranch=source_gbranch,
                 bhash=source_bhash
             ))
         else:
-            sb.append("> Source: https://github.com/{grepo}/commit/{ghash} on [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch})\n".format(
+            sb.append("> Source: https://github.com/{grepo}/commit/{ghash} on branch `{gbranch}`\n".format(
                 grepo=source_grepo,
                 gbranch=source_gbranch,
                 ghash=source_ghash
@@ -424,7 +424,7 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
         print("Error: the destination of a pull request, '{}', is not '{}'.".format(destination_brepo, bexport.get_repo_full_name()))
     if destination_ghash is None:
         print("Error: could not map mercurial commit '{}' (destination of a PR) to git.".format(destination_bhash))
-    sb.append("> Destination: https://github.com/{grepo}/commit/{ghash} on [`{gbranch}`](https://github.com/{grepo}/tree/{gbranch})\n".format(
+    sb.append("> Destination: https://github.com/{grepo}/commit/{ghash} on branch `{gbranch}`\n".format(
         grepo=destination_grepo,
         gbranch=destination_gbranch,
         ghash=destination_ghash
@@ -500,7 +500,7 @@ def construct_gissue_comments(bcomments, cmap, args):
         # Skip deleted comments
         if "deleted" in bcomment and bcomment["deleted"]:
             continue
-        # Constrct comment
+        # Construct comment
         comment = {
             "body": construct_gcomment_body(bcomment, bcomments, cmap, args),
             "created_at": convert_date(bcomment["created_on"])
