@@ -110,7 +110,6 @@ def replace_implicit_links_to_prs(body, args):
 MENTION_RE = re.compile(r'(?:^|(?<=[^\w]))@([a-zA-Z0-9_\-]+|{[a-zA-Z0-9_\-:]+})')
 def replace_links_to_users(body):
     # replace @mentions with users specified in config:
-    # TODO: remove the 'ignore_' before doing the real migration
     def replace_user(match):
         buser = match.group(1)
         guser = lookup_user(buser)
@@ -454,15 +453,28 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
 def construct_gcomment_body_for_change(bchange):
     created_on = time_string_to_date_string(bchange["created_on"])
     sb = []
-    blacklist = ["content", "title", "assignee_account_id"]
     for changed_key, change in bchange["changes"].items():
-        if changed_key not in blacklist:
-            sb.append("> {} changed `{}` from `{}` to `{}` on {}\n".format(
+        if changed_key == "assignee_account_id":
+            continue
+        if not sb:
+            sb.append("> {} on {}:\n".format(
                 format_buser_mention(bchange["user"], capitalize=True),
+                created_on
+            ))
+        if changed_key == "content":
+            sb.append("> * edited the description\n")
+        elif changed_key == "title":
+            sb.append("> * edited the title\n")
+        elif changed_key == "assignee":
+            sb.append("> * changed the assignee from {} to {}\n".format(
+                format_buser_mention({"nickname": change["old"]}) if change["old"] else "(none)",
+                format_buser_mention({"nickname": change["new"]}) if change["new"] else "(none)"
+            ))
+        else:
+            sb.append("> * changed `{}` from `{}` to `{}`\n".format(
                 changed_key,
                 change["old"] if change["old"] else "(none)",
-                change["new"] if change["new"] else "(none)",
-                created_on
+                change["new"] if change["new"] else "(none)"
             ))
     return "".join(sb)
 
