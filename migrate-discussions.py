@@ -685,6 +685,10 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
                     guser for guser in [map_buser_to_guser(bpull["author"])]
                     if guser is not None
                 ],
+                "reviewers": [
+                    guser for guser in map(map_buser_to_guser, bpull["reviewers"])
+                    if guser is not None
+                ],
                 "closed": is_closed,
                 "labels": list(set(labels)),
                 "base": base_branch,

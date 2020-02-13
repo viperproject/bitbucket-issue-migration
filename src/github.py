@@ -174,6 +174,12 @@ class GithubImport:
             if x.name not in meta["assignees"]
         ])
         pull.add_to_assignees(*meta["assignees"])
+        (reviewers, team_reviewers) = pull.get_review_request()
+        pull.delete_review_request(
+            reviewers=[u.name for u in reviewers],
+            team_reviewers=[u.name for u in team_reviewers]
+        )
+        pull.create_review_request(reviewers=meta["reviewers"])
         self.update_pull_comments(pull, pull_data["comments"])
 
     def create_pull_with_comments(self, pull_data):
@@ -186,5 +192,7 @@ class GithubImport:
         )
         pull.set_labels(*meta["labels"])
         pull.add_to_assignees(*meta["assignees"])
+        if meta["reviewers"]:
+            pull.create_review_request(reviewers=meta["reviewers"])
         for comment in pull_data["comments"]:
             pull.create_issue_comment(comment["body"])
