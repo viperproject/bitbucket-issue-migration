@@ -182,6 +182,7 @@ def main():
         git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
         execute("git push --set-upstream origin master", cwd=git_folder)
         execute("git push --all origin", cwd=git_folder)
+        execute("git push --tags origin", cwd=git_folder)
 
     for brepo, grepo in repositories_to_migrate.items():
         step("Migrate isues and pull requests of bitbucket repository '{}' to github".format(brepo))
