@@ -158,7 +158,7 @@ def replace_implicit_commit_hashes(body, cmap):
         grepo = config.KNOWN_REPO_MAPPING[brepo]
         return r'https://github.com/{grepo}/commit/{git_hash}'.format(
             grepo=grepo, git_hash=git_hash)
-    return IMPLICIT_PR_LINK_RE.sub(replace_commit_hash, body)
+    return IMPLICIT_COMMIT_HASH_RE.sub(replace_commit_hash, body)
 
 
 def map_bstate_to_gstate(bissue):
