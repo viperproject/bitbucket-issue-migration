@@ -117,8 +117,8 @@ KNOWN_REPO_MAPPING = {
 # of PRs' IDs
 KNOWN_ISSUES_COUNT_MAPPING = {
     "viperproject/silver": 301,
-    "viperproject/carbon": 295,
-    "viperproject/silicon": 406,
+    "viperproject/carbon": 296,
+    "viperproject/silicon": 407,
     "viperproject/viperserver": 0,
 }
 
