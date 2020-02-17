@@ -28,7 +28,7 @@ def replace_explicit_links_to_issues(body):
 
 # test for all known repo names (separated by a single whitespace from issue)
 # the disjunction ensures that text between squared brackets is not captured
-IMPLICIT_ISSUE_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?(?:issue )?#(\d+)'
+IMPLICIT_ISSUE_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?(?:issue )?\B#(\d+)\b'
                            .format(repo_names="|".join([repo.split('/')[-1] + " "
                                                         for repo in config.KNOWN_REPO_MAPPING])),
                                     re.IGNORECASE)
@@ -76,7 +76,7 @@ def replace_explicit_links_to_prs(body):
 
 # test for all known repo names (separated by a single whitespace from issue)
 # the disjunction ensures that text between squared brackets is not captured
-IMPLICIT_PR_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?pull request #(\d+)'
+IMPLICIT_PR_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?pull request \B#(\d+)\b'
                            .format(repo_names="|".join([repo.split('/')[-1] + " "
                                                         for repo in config.KNOWN_REPO_MAPPING])),
                                  re.IGNORECASE)
