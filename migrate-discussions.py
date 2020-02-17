@@ -740,7 +740,7 @@ def bitbucket_to_github(bexport, gimport, cmap, args):
     bissues = bexport.get_issues()
     bpulls = bexport.get_pulls()
     assert brepo_full_name in config.KNOWN_ISSUES_COUNT_MAPPING
-    assert config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name] == len(bissues)
+    assert config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name] == len(bissues), len(bissues)
     pulls_id_offset = len(bissues)
 
     # Migrate attachments

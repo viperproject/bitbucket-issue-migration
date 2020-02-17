@@ -185,7 +185,7 @@ def main():
         execute("git push --tags origin", cwd=git_folder)
 
     for brepo, grepo in repositories_to_migrate.items():
-        step("Migrate isues and pull requests of bitbucket repository '{}' to github".format(brepo))
+        step("Migrate issues and pull requests of bitbucket repository '{}' to github".format(brepo))
         execute("./migrate-discussions.py --github-access-token {} --bitbucket-repository {} --github-repository {}".format(
             args.github_access_token,
             brepo,
