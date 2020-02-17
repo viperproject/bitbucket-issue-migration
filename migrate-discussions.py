@@ -83,7 +83,7 @@ IMPLICIT_PR_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?pull request \B#(\d+)\
 def replace_implicit_links_to_prs(body, args):
     def replace_pr_link(match):
         repo_name = match.group(1)
-        bpr_nr = int(match.group(2))
+        bpr_nr = match.group(2)
         if bpr_nr is None:
             # first disjuncted term was matched, i.e. squared brackets
             # leave unchanged:
@@ -103,7 +103,7 @@ def replace_implicit_links_to_prs(body, args):
             # leave unchanged:
             return match.group(0)
         issues_count = config.KNOWN_ISSUES_COUNT_MAPPING[brepo]
-        gpr_number = bpr_nr + issues_count
+        gpr_number = int(bpr_nr) + issues_count
         return r'https://github.com/{repo}/pull/{gpr_number}'.format(
             repo=grepo, gpr_number=gpr_number)
     return IMPLICIT_PR_LINK_RE.sub(replace_pr_link, body)
