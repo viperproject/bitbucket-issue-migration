@@ -22,14 +22,20 @@ class BranchHead:
 
 
 def get_fork_name(pr):
+    if pr["source"]["repository"] is None:
+        return None
     return pr["source"]["repository"]["full_name"]
 
 
 def get_fork_rev_hash(pr):
+    if pr["source"]["commit"] is None:
+        return None
     return pr["source"]["commit"]["hash"]
 
 
 def get_fork_commit_url(pr):
+    if pr["source"]["commit"] is None:
+        return None
     return pr["source"]["commit"]["links"]["self"]["href"]
 
 
@@ -38,7 +44,8 @@ def get_fork_commits(bexport, args):
     fork_commits = []
     for pr in pull_requests:
         # check if commit still exists:
-        exists = bexport.session.head(get_fork_commit_url(pr)).status_code == 200
+        fork_commit_url = get_fork_commit_url(pr)
+        exists = fork_commit_url is not None and bexport.session.head(fork_commit_url).status_code == 200
         if exists:
             fork_commits.append(ForkCommit(get_fork_name(pr), get_fork_rev_hash(pr)))
         else:
