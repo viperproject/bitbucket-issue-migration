@@ -28,7 +28,7 @@ def replace_explicit_links_to_issues(body):
 
 # test for all known repo names (separated by a single whitespace from issue)
 # the disjunction ensures that text between squared brackets is not captured
-IMPLICIT_ISSUE_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?issue #(\d+)'
+IMPLICIT_ISSUE_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?(?:issue )?\B#(\d+)\b'
                            .format(repo_names="|".join([repo.split('/')[-1] + " "
                                                         for repo in config.KNOWN_REPO_MAPPING])),
                                     re.IGNORECASE)
@@ -76,14 +76,14 @@ def replace_explicit_links_to_prs(body):
 
 # test for all known repo names (separated by a single whitespace from issue)
 # the disjunction ensures that text between squared brackets is not captured
-IMPLICIT_PR_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?pull request #(\d+)'
+IMPLICIT_PR_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?pull request \B#(\d+)\b'
                            .format(repo_names="|".join([repo.split('/')[-1] + " "
                                                         for repo in config.KNOWN_REPO_MAPPING])),
                                  re.IGNORECASE)
 def replace_implicit_links_to_prs(body, args):
     def replace_pr_link(match):
         repo_name = match.group(1)
-        bpr_nr = match.group(2)
+        bpr_nr = int(match.group(2))
         if bpr_nr is None:
             # first disjuncted term was matched, i.e. squared brackets
             # leave unchanged:
@@ -158,7 +158,7 @@ def replace_implicit_commit_hashes(body, cmap):
         grepo = config.KNOWN_REPO_MAPPING[brepo]
         return r'https://github.com/{grepo}/commit/{git_hash}'.format(
             grepo=grepo, git_hash=git_hash)
-    return IMPLICIT_PR_LINK_RE.sub(replace_commit_hash, body)
+    return IMPLICIT_COMMIT_HASH_RE.sub(replace_commit_hash, body)
 
 
 def map_bstate_to_gstate(bissue):
@@ -247,10 +247,12 @@ def map_bcomponent_to_glabels(bissue):
 # maps the raw content of issues, pull requests, and comments to new content for GitHub by replacing links
 # and user mentions
 def map_content(content, cmap, args):
-    tmp = replace_explicit_links_to_issues(content)
-    tmp = replace_implicit_links_to_issues(tmp, args)
-    tmp = replace_explicit_links_to_prs(tmp)
+    # replace first links to PRs because matching "issue" is optional so we need to avoid interpreting
+    # "pull request #1" as an issue
+    tmp = replace_explicit_links_to_prs(content)
     tmp = replace_implicit_links_to_prs(tmp, args)
+    tmp = replace_explicit_links_to_issues(tmp)
+    tmp = replace_implicit_links_to_issues(tmp, args)
     tmp = replace_links_to_users(tmp)
     tmp = replace_explicit_commit_hashes(tmp, cmap)
     return replace_implicit_commit_hashes(tmp, cmap)
