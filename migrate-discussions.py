@@ -28,7 +28,7 @@ def replace_explicit_links_to_issues(body):
 
 # test for all known repo names (separated by a single whitespace from issue)
 # the disjunction ensures that text between squared brackets is not captured
-IMPLICIT_ISSUE_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?issue #(\d+)'
+IMPLICIT_ISSUE_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?(?:issue )?#(\d+)'
                            .format(repo_names="|".join([repo.split('/')[-1] + " "
                                                         for repo in config.KNOWN_REPO_MAPPING])),
                                     re.IGNORECASE)
@@ -247,10 +247,12 @@ def map_bcomponent_to_glabels(bissue):
 # maps the raw content of issues, pull requests, and comments to new content for GitHub by replacing links
 # and user mentions
 def map_content(content, cmap, args):
-    tmp = replace_explicit_links_to_issues(content)
-    tmp = replace_implicit_links_to_issues(tmp, args)
-    tmp = replace_explicit_links_to_prs(tmp)
+    # replace first links to PRs because matching "issue" is optional so we need to avoid interpreting
+    # "pull request #1" as an issue
+    tmp = replace_explicit_links_to_prs(content)
     tmp = replace_implicit_links_to_prs(tmp, args)
+    tmp = replace_explicit_links_to_issues(tmp)
+    tmp = replace_implicit_links_to_issues(tmp, args)
     tmp = replace_links_to_users(tmp)
     tmp = replace_explicit_commit_hashes(tmp, cmap)
     return replace_implicit_commit_hashes(tmp, cmap)
