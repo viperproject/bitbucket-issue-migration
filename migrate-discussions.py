@@ -83,7 +83,7 @@ IMPLICIT_PR_LINK_RE = re.compile(r'\[.*?\]|({repo_names})?pull request #(\d+)'
 def replace_implicit_links_to_prs(body, args):
     def replace_pr_link(match):
         repo_name = match.group(1)
-        bpr_nr = match.group(2)
+        bpr_nr = int(match.group(2))
         if bpr_nr is None:
             # first disjuncted term was matched, i.e. squared brackets
             # leave unchanged:
