@@ -290,32 +290,84 @@ def convert_date(bb_date):
     raise RuntimeError("Could not parse date: {}".format(bb_date))
 
 
-def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args):
+def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpull):
     sb = []
     comment_created_on = time_string_to_date_string(bcomment["created_on"])
     sb.append("> " + format_buser_mention(bcomment["user"], capitalize=True) + " commented on " + comment_created_on + "\n")
     if "inline" in bcomment:
+        bcomment = bexport.get_detailed_comment(bcomment)
         inline_data = bcomment["inline"]
         file_path = inline_data["path"]
+        if inline_data["outdated"]:
+            outdated_message = "(outdated) "
+            show_snippet = False
+        else:
+            outdated_message = ""
+            snippet_hg_commit = bpull["source"]["commit"]
+            if snippet_hg_commit is not None:
+                snippet_git_commit = cmap.convert_commit_hash(snippet_hg_commit)
+                show_snippet = snippet_git_commit is not None
+            else:
+                show_snippet = False
+
         if inline_data["from"] is None or inline_data["from"] == inline_data["to"]:
             if inline_data["to"] is None:
-                sb.append("> Inline comment on `{}`\n".format(
-                    file_path
-                ))
+                if show_snippet:
+                    sb.append("> Inline comment on [`{}`](https://github.com/{}/blob/{}/{})\n".format(
+                        file_path,
+                        map_brepo_to_grepo(bexport.get_repo_full_name()),
+                        snippet_git_commit,
+                        file_path
+                    ))
+                else:
+                    sb.append("> Inline {}comment on `{}`\n".format(
+                        outdated_message,
+                        file_path
+                    ))
             else:
                 to_line = inline_data["to"]
-                sb.append("> Inline comment on line {} of `{}`\n".format(
-                    to_line,
-                    file_path
-                ))
+                if show_snippet:
+                    sb.append("> Inline comment on line {} of `{}`:\n".format(
+                        to_line,
+                        file_path
+                    ))
+                    sb.append("> https://github.com/{}/blob/{}/{}#L{}\n".format(
+                        map_brepo_to_grepo(bexport.get_repo_full_name()),
+                        snippet_git_commit,
+                        file_path,
+                        to_line
+                    ))
+                else:
+                    sb.append("> Inline {}comment on line {} of `{}`\n".format(
+                        outdated_message,
+                        to_line,
+                        file_path
+                    ))
+
         else:
             from_line = inline_data["from"]
             to_line = inline_data["to"]
-            sb.append("> Inline comment on lines {}..{} of `{}`\n".format(
-                from_line,
-                to_line,
-                file_path
-            ))
+            if show_snippet:
+                sb.append("> Inline comment on lines {}..{} of `{}`:\n".format(
+                    from_line,
+                    to_line,
+                    file_path
+                ))
+                sb.append("> https://github.com/{}/blob/{}/{}#L{}-L{}\n".format(
+                    map_brepo_to_grepo(bexport.get_repo_full_name()),
+                    snippet_git_commit,
+                    file_path,
+                    to_line,
+                    to_line
+                ))
+            else:
+                sb.append("> Inline {}comment on lines {}..{} of `{}`\n".format(
+                    outdated_message,
+                    from_line,
+                    to_line,
+                    file_path
+                ))
+
     sb.append("\n")
     if "parent" in bcomment:
         parent_comment = bcomments_by_id[bcomment["parent"]["id"]]
@@ -506,7 +558,7 @@ def construct_gcomment_body_for_approval_activity(approval_activity):
     )
 
 
-def construct_gissue_comments(bcomments, cmap, args):
+def construct_gissue_comments(bcomments, cmap, args, bexport, bpull=None):
     comments = []
 
     for comment_id, bcomment in bcomments.items():
@@ -518,7 +570,7 @@ def construct_gissue_comments(bcomments, cmap, args):
             continue
         # Construct comment
         comment = {
-            "body": construct_gcomment_body(bcomment, bcomments, cmap, args),
+            "body": construct_gcomment_body(bcomment, bcomments, cmap, args, bexport, bpull),
             "created_at": convert_date(bcomment["created_on"])
         }
         comments.append(comment)
@@ -610,7 +662,7 @@ def construct_gissue_from_bissue(bissue, bexport, attachment_gist_by_issue_id, c
 
     # Construct comments
     comments = []
-    comments += construct_gissue_comments(bcomments, cmap, args)
+    comments += construct_gissue_comments(bcomments, cmap, args, bexport)
     comments += construct_gissue_comments_for_changes(bchanges)
     comments.sort(key=lambda x: x["created_at"])
 
@@ -645,7 +697,7 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
 
     # Construct comments
     comments = []
-    comments += construct_gissue_comments(bcomments, cmap, args)
+    comments += construct_gissue_comments(bcomments, cmap, args, bexport, bpull)
     comments += construct_gissue_comments_for_activity(bactivity)
     comments.sort(key=lambda x: x["created_at"])
 
