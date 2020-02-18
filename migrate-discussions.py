@@ -303,8 +303,8 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
             show_snippet = False
         else:
             outdated_message = ""
-            snippet_hg_commit = bpull["source"]["commit"]
-            if snippet_hg_commit is not None:
+            if bpull["source"]["commit"] is not None:
+                snippet_hg_commit = bpull["source"]["commit"]["hash"]
                 snippet_git_commit = cmap.convert_commit_hash(snippet_hg_commit)
                 show_snippet = snippet_git_commit is not None
             else:
