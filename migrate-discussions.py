@@ -297,7 +297,7 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args):
     if "inline" in bcomment:
         inline_data = bcomment["inline"]
         file_path = inline_data["path"]
-        if inline_data["from"] is None:
+        if inline_data["from"] is None or inline_data["from"] == inline_data["to"]:
             if inline_data["to"] is None:
                 sb.append("> Inline comment on `{}`\n".format(
                     file_path
