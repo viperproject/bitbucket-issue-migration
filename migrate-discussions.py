@@ -7,6 +7,7 @@ import config
 from src.bitbucket import BitbucketExport
 from src.github import GithubImport
 from src.map import CommitMap
+import requests
 
 
 EXPLICIT_ISSUE_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/issues*/(\d+)[^\s()\[\]{{}}]*'
@@ -305,7 +306,13 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
             if bpull["source"]["commit"] is not None:
                 snippet_hg_commit = bpull["source"]["commit"]["hash"]
                 snippet_git_commit = cmap.convert_commit_hash(snippet_hg_commit)
-                show_snippet = snippet_git_commit is not None
+                if snippet_git_commit is not None:
+                    snippet_file_url = "https://github.com/{}/blob/{}/{}".format(
+                        map_brepo_to_grepo(bexport.get_repo_full_name()),
+                        snippet_git_commit,
+                        file_path
+                    )
+                    show_snippet = requests.get(snippet_file_url).status_code == 200
             else:
                 show_snippet = False
 
@@ -313,12 +320,10 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
         if inline_data["from"] is None and inline_data["to"] is None:
             # No line
             if show_snippet:
-                sb.append("> **{}:** [`{}`](https://github.com/{}/blob/{}/{})\n".format(
+                sb.append("> **{}:** [`{}`]({})\n".format(
                     message_prefix,
                     file_path,
-                    map_brepo_to_grepo(bexport.get_repo_full_name()),
-                    snippet_git_commit,
-                    file_path
+                    snippet_file_url
                 ))
             else:
                 sb.append("> **{}:** [`{}`]()\n".format(
@@ -334,10 +339,8 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
                 file_path
             ))
             if show_snippet:
-                sb.append("> https://github.com/{}/blob/{}/{}#L{}\n".format(
-                    map_brepo_to_grepo(bexport.get_repo_full_name()),
-                    snippet_git_commit,
-                    file_path,
+                sb.append("> {}#L{}\n".format(
+                    snippet_file_url,
                     the_line
                 ))
         else:
@@ -351,10 +354,8 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
                 file_path
             ))
             if show_snippet:
-                sb.append("> https://github.com/{}/blob/{}/{}#L{}-L{}\n".format(
-                    map_brepo_to_grepo(bexport.get_repo_full_name()),
-                    snippet_git_commit,
-                    file_path,
+                sb.append("> {}#L{}-L{}\n".format(
+                    snippet_file_url,
                     to_line,
                     to_line
                 ))
