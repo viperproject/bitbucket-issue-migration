@@ -312,14 +312,17 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
         sb.append(">\n")
         if inline_data["from"] is None and inline_data["to"] is None:
             # No line
-            sb.append("> **{}:** `{}`\n".format(
-                message_prefix,
-                file_path
-            ))
             if show_snippet:
-                sb.append("> https://github.com/{}/blob/{}/{}#L1\n".format(
+                sb.append("> **{}:** [`{}`](https://github.com/{}/blob/{}/{})\n".format(
+                    message_prefix,
+                    file_path,
                     map_brepo_to_grepo(bexport.get_repo_full_name()),
                     snippet_git_commit,
+                    file_path
+                ))
+            else:
+                sb.append("> **{}:** [`{}`]()\n".format(
+                    message_prefix,
                     file_path
                 ))
         elif None in (inline_data["from"], inline_data["to"]) or inline_data["from"] == inline_data["to"]:
