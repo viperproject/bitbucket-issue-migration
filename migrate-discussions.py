@@ -568,9 +568,9 @@ def construct_gissue_comments(bcomments, cmap, args, bexport, bpull=None):
 
 
 def construct_gist_description_for_issue_attachments(bissue, bexport):
-    return "Attachments for issue #{} of bitbucket repo {}".format(
-        bissue["id"],
-        bexport.get_repo_full_name()
+    return "Attachments for issue https://github.com/{}/issues/{}".format(
+        map_brepo_to_grepo(bexport.get_repo_full_name()),
+        bissue["id"]
     )
 
 
