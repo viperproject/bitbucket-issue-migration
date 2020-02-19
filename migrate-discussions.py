@@ -172,8 +172,7 @@ def map_bstate_to_gstate(bissue):
 def lookup_user(buser_nickname):
     if buser_nickname not in config.USER_MAPPING:
         return None
-    # TODO: remove the "ignore_" before the official migration
-    return "ignore_" + config.USER_MAPPING[buser_nickname]
+    return config.USER_MAPPING[buser_nickname]
 
 
 def map_buser_to_guser(buser):
