@@ -312,47 +312,43 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
 
         if inline_data["from"] is None or inline_data["from"] == inline_data["to"]:
             if inline_data["to"] is None:
+                sb.append("> Inline {}comment on `{}`{}\n".format(
+                    outdated_message,
+                    file_path,
+                    ":" if show_snippet else ""
+                ))
                 if show_snippet:
-                    sb.append("> Inline comment on [`{}`](https://github.com/{}/blob/{}/{})\n".format(
-                        file_path,
+                    sb.append("> https://github.com/{}/blob/{}/{}#L1\n".format(
                         map_brepo_to_grepo(bexport.get_repo_full_name()),
                         snippet_git_commit,
                         file_path
                     ))
-                else:
-                    sb.append("> Inline {}comment on `{}`\n".format(
-                        outdated_message,
-                        file_path
-                    ))
             else:
                 to_line = inline_data["to"]
+                sb.append("> Inline {}comment on line {} of `{}`{}\n".format(
+                    outdated_message,
+                    to_line,
+                    file_path,
+                    ":" if show_snippet else ""
+                ))
                 if show_snippet:
-                    sb.append("> Inline comment on line {} of `{}`:\n".format(
-                        to_line,
-                        file_path
-                    ))
                     sb.append("> https://github.com/{}/blob/{}/{}#L{}\n".format(
                         map_brepo_to_grepo(bexport.get_repo_full_name()),
                         snippet_git_commit,
                         file_path,
                         to_line
                     ))
-                else:
-                    sb.append("> Inline {}comment on line {} of `{}`\n".format(
-                        outdated_message,
-                        to_line,
-                        file_path
-                    ))
-
         else:
             from_line = inline_data["from"]
             to_line = inline_data["to"]
+            sb.append("> Inline {}comment on lines {}..{} of `{}`{}\n".format(
+                outdated_message,
+                from_line,
+                to_line,
+                file_path,
+                ":" if show_snippet else ""
+            ))
             if show_snippet:
-                sb.append("> Inline comment on lines {}..{} of `{}`:\n".format(
-                    from_line,
-                    to_line,
-                    file_path
-                ))
                 sb.append("> https://github.com/{}/blob/{}/{}#L{}-L{}\n".format(
                     map_brepo_to_grepo(bexport.get_repo_full_name()),
                     snippet_git_commit,
@@ -360,14 +356,6 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
                     to_line,
                     to_line
                 ))
-            else:
-                sb.append("> Inline {}comment on lines {}..{} of `{}`\n".format(
-                    outdated_message,
-                    from_line,
-                    to_line,
-                    file_path
-                ))
-
     sb.append("\n")
     if "parent" in bcomment:
         parent_comment = bcomments_by_id[bcomment["parent"]["id"]]
