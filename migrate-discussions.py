@@ -298,10 +298,10 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
         inline_data = bcomment["inline"]
         file_path = inline_data["path"]
         if inline_data["outdated"]:
-            outdated_message = "(outdated) "
+            message_prefix = "Outdated location"
             show_snippet = False
         else:
-            outdated_message = ""
+            message_prefix = "Location"
             if bpull["source"]["commit"] is not None:
                 snippet_hg_commit = bpull["source"]["commit"]["hash"]
                 snippet_git_commit = cmap.convert_commit_hash(snippet_hg_commit)
@@ -309,43 +309,43 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
             else:
                 show_snippet = False
 
-        if inline_data["from"] is None or inline_data["from"] == inline_data["to"]:
-            if inline_data["to"] is None:
-                sb.append("> Inline {}comment on `{}`{}\n".format(
-                    outdated_message,
-                    file_path,
-                    ":" if show_snippet else ""
+        sb.append(">\n")
+        if inline_data["from"] is None and inline_data["to"] is None:
+            # No line
+            sb.append("> **{}:** `{}`\n".format(
+                message_prefix,
+                file_path
+            ))
+            if show_snippet:
+                sb.append("> https://github.com/{}/blob/{}/{}#L1\n".format(
+                    map_brepo_to_grepo(bexport.get_repo_full_name()),
+                    snippet_git_commit,
+                    file_path
                 ))
-                if show_snippet:
-                    sb.append("> https://github.com/{}/blob/{}/{}#L1\n".format(
-                        map_brepo_to_grepo(bexport.get_repo_full_name()),
-                        snippet_git_commit,
-                        file_path
-                    ))
-            else:
-                to_line = inline_data["to"]
-                sb.append("> Inline {}comment on line {} of `{}`{}\n".format(
-                    outdated_message,
-                    to_line,
+        elif None in (inline_data["from"], inline_data["to"]) or inline_data["from"] == inline_data["to"]:
+            # Single line
+            the_line = inline_data["to"] if inline_data["from"] is None else inline_data["from"]
+            sb.append("> **{}:** line {} of `{}`\n".format(
+                message_prefix,
+                the_line,
+                file_path
+            ))
+            if show_snippet:
+                sb.append("> https://github.com/{}/blob/{}/{}#L{}\n".format(
+                    map_brepo_to_grepo(bexport.get_repo_full_name()),
+                    snippet_git_commit,
                     file_path,
-                    ":" if show_snippet else ""
+                    the_line
                 ))
-                if show_snippet:
-                    sb.append("> https://github.com/{}/blob/{}/{}#L{}\n".format(
-                        map_brepo_to_grepo(bexport.get_repo_full_name()),
-                        snippet_git_commit,
-                        file_path,
-                        to_line
-                    ))
         else:
+            # Multiple lines
             from_line = inline_data["from"]
             to_line = inline_data["to"]
-            sb.append("> Inline {}comment on lines {}..{} of `{}`{}\n".format(
-                outdated_message,
+            sb.append("> **{}:** lines {}-{} of `{}`\n".format(
+                message_prefix,
                 from_line,
                 to_line,
-                file_path,
-                ":" if show_snippet else ""
+                file_path
             ))
             if show_snippet:
                 sb.append("> https://github.com/{}/blob/{}/{}#L{}-L{}\n".format(
