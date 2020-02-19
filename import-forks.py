@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import re
+import config
 from src.repo import HgRepo
 from src.bitbucket import BitbucketExport
 
@@ -127,10 +128,10 @@ def create_branch(repo, rev_hash, branch_name, args):
     if args.verbose:
         print("hg_update {node}".format(node=rev_hash))
         print("hg_branch {branch_name}".format(branch_name=branch_name))
-        print("hg_commit \"Creates branch {branch_name}\"".format(branch_name=branch_name))
+        print("hg_commit \"Create branch {branch_name}\"".format(branch_name=branch_name))
     repo.hg_update(rev_hash)
     repo.hg_branch(branch_name)
-    repo.hg_commit("Creates branch {branch_name}".format(branch_name=branch_name))
+    repo.hg_commit("Create branch {branch_name}".format(branch_name=branch_name))
 
 
 def create_master_branch(repo, args):
@@ -180,7 +181,7 @@ def create_parser():
 def main():
     parser = create_parser()
     args = parser.parse_args()
-    repo = HgRepo(args.repo)
+    repo = HgRepo(args.repo, config.MIGRATION_COMMITS_USER)
     bexport = BitbucketExport(args.bitbucket_repository, args.bitbucket_username, args.bitbucket_password)
 
     fork_commits = get_fork_commits(bexport, args)

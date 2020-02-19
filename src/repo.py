@@ -4,8 +4,9 @@ import re
 
 
 class HgRepo:
-    def __init__(self, path):
+    def __init__(self, path, user=None):
         self.path = path
+        self.user = user
         self.env = os.environ
         self.env[str('LANG')] = str('en_US')
 
@@ -33,4 +34,7 @@ class HgRepo:
         self.hg_command(*args)
 
     def hg_commit(self, msg):
-        self.hg_command("commit", "-m", msg)
+        if self.user is None:
+            self.hg_command("commit", "-m", msg)
+        else:
+            self.hg_command("commit", "-m", msg, "--user", self.user)

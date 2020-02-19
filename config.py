@@ -1,3 +1,6 @@
+# Mercurial user to be used for the commits of the migration
+MIGRATION_COMMITS_USER = "Viper Admin <viper-admin@inf.ethz.ch>"
+
 # Github only accepts assignees from valid users. We map those users from bitbucket.
 USER_MAPPING = {
     "fpoli_eth": "fpoli",
