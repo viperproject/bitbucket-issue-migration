@@ -4,6 +4,7 @@ from github.GithubException import UnknownObjectException
 from time import sleep
 import requests
 from .utils import get_request_json
+from copy import deepcopy
 
 
 class GithubImport:
@@ -191,7 +192,8 @@ class GithubImport:
             head=meta["head"],
         )
         pull.set_labels(*meta["labels"])
-        pull.add_to_assignees(*meta["assignees"])
+        # Workaround for bug https://github.com/PyGithub/PyGithub/issues/1406
+        deepcopy(pull).add_to_assignees(*meta["assignees"])
         if meta["reviewers"]:
             pull.create_review_request(reviewers=meta["reviewers"])
         for comment in pull_data["comments"]:
