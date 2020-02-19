@@ -359,7 +359,10 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
     if "parent" in bcomment:
         parent_comment = bcomments_by_id[bcomment["parent"]["id"]]
         if parent_comment["content"]["raw"] is not None:
-            sb.append("> {}\n\n".format(map_content(parent_comment["content"]["raw"], cmap, args)))
+            parent_content = map_content(parent_comment["content"]["raw"], cmap, args)
+            for parent_line in parent_content.split("\n"):
+                sb.append("> {}\n".format(parent_line))
+            sb.append("\n")
     sb.append("" if bcomment["content"]["raw"] is None else map_content(bcomment["content"]["raw"], cmap, args))
     return "".join(sb)
 
