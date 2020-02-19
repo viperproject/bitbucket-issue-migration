@@ -21,7 +21,7 @@ def replace_explicit_links_to_issues(body):
             # leave link unchanged:
             return match.group(0)
         grepo = config.KNOWN_REPO_MAPPING[brepo]
-        return r'https://github.com/{repo}/issues/{issue_nr} '.format(
+        return r'https://github.com/{repo}/issues/{issue_nr}'.format(
             repo=grepo, issue_nr=issue_nr)
     return EXPLICIT_ISSUE_LINK_RE.sub(replace_issue_link, body)
 
@@ -48,7 +48,7 @@ def replace_implicit_links_to_issues(body, args):
         if grepo is None:
             # interpret as same repo link
             grepo = args.github_repository
-        return r'https://github.com/{repo}/issues/{issue_nr} '.format(
+        return r'<https://github.com/{repo}/issues/{issue_nr}>'.format(
             repo=grepo, issue_nr=issue_nr)
     return IMPLICIT_ISSUE_LINK_RE.sub(replace_issue_link, body)
 
@@ -69,7 +69,7 @@ def replace_explicit_links_to_prs(body):
         grepo = config.KNOWN_REPO_MAPPING[brepo]
         issues_count = config.KNOWN_ISSUES_COUNT_MAPPING[brepo]
         gpr_number = bpr_nr + issues_count
-        return r'https://github.com/{repo}/pull/{gpr_number} '.format(
+        return r'https://github.com/{repo}/pull/{gpr_number}'.format(
             repo=grepo, gpr_number=gpr_number)
     return EXPLICIT_PR_LINK_RE.sub(replace_pr_link, body)
 
@@ -104,7 +104,7 @@ def replace_implicit_links_to_prs(body, args):
             return match.group(0)
         issues_count = config.KNOWN_ISSUES_COUNT_MAPPING[brepo]
         gpr_number = int(bpr_nr) + issues_count
-        return r'https://github.com/{repo}/pull/{gpr_number} '.format(
+        return r'<https://github.com/{repo}/pull/{gpr_number}>'.format(
             repo=grepo, gpr_number=gpr_number)
     return IMPLICIT_PR_LINK_RE.sub(replace_pr_link, body)
 
@@ -118,7 +118,7 @@ def replace_links_to_users(body):
         if guser is None:
             # leave username unchanged, but remove the @:
             return buser
-        return '@' + guser + ' '
+        return '@' + guser
     return MENTION_RE.sub(replace_user, body)
 
 
@@ -134,7 +134,7 @@ def replace_explicit_commit_hashes(body, cmap):
             # leave link unchanged:
             return match.group(0)
         grepo = config.KNOWN_REPO_MAPPING[brepo]
-        return r'https://github.com/{grepo}/commit/{git_hash} '.format(
+        return r'https://github.com/{grepo}/commit/{git_hash}'.format(
             grepo=grepo, git_hash=git_hash)
     return EXPLICIT_COMMIT_HASH_RE.sub(replace_commit_hash, body)
 
@@ -156,7 +156,7 @@ def replace_implicit_commit_hashes(body, cmap):
             # leave unchanged:
             return match.group(0)
         grepo = config.KNOWN_REPO_MAPPING[brepo]
-        return r'https://github.com/{grepo}/commit/{git_hash} '.format(
+        return r'<https://github.com/{grepo}/commit/{git_hash}>'.format(
             grepo=grepo, git_hash=git_hash)
     return IMPLICIT_COMMIT_HASH_RE.sub(replace_commit_hash, body)
 
