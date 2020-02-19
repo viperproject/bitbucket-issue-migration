@@ -15,7 +15,7 @@ class GithubImport:
         retry = Retry(
             connect=5,
             read=5,
-            backoff_factor=0.3,
+            backoff_factor=0.5,
             status_forcelist=(500, 502, 503, 504)
         )
         self.github = Github(access_token, timeout=30, retry=retry, per_page=300)
