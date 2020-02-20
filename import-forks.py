@@ -139,6 +139,7 @@ def create_master_branch(repo, args):
     # the master branch creation commit for being on the master branch. It looks like fast-export uses the linear
     # revision numbering and starts at the highest (i.e. latest).
     heads = get_heads(repo)
+    # FIXME: this doesn't correctly pick the default branch of some repos
     default_heads = list(filter(lambda head: head.branch_name == "default", heads))
     if len(default_heads) == 0:
         print("no default head found => skipping master branch creation")

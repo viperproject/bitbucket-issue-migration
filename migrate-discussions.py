@@ -304,8 +304,10 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport):
             message_prefix = "Outdated location"
         else:
             message_prefix = "Location"
+
         show_snippet = False
-        if "code" in bcomment["links"]:
+        if False and "code" in bcomment["links"]:
+            # Disabled, because the hg_commit looks wrong
             diff_url = urlparse(bcomment["links"]["code"]["href"])
             snippet_hg_commit = diff_url.path.split("..")[-1]
             snippet_git_commit = cmap.convert_commit_hash(snippet_hg_commit)
