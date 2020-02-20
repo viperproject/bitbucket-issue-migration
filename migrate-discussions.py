@@ -298,10 +298,10 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
         bcomment = bexport.get_detailed_comment(bcomment)
         inline_data = bcomment["inline"]
         file_path = inline_data["path"]
-        if inline_data["outdated"]:
-            message_prefix = "Outdated location"
-            show_snippet = False
-        else:
+
+        show_snippet = False
+        message_prefix = "Outdated location"
+        if not inline_data["outdated"]:
             message_prefix = "Location"
             if bpull["source"]["commit"] is not None:
                 snippet_hg_commit = bpull["source"]["commit"]["hash"]
@@ -312,9 +312,12 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
                         snippet_git_commit,
                         file_path
                     )
-                    show_snippet = requests.get(snippet_file_url).status_code == 200
-            else:
-                show_snippet = False
+                    snippet_url_status = requests.get(snippet_file_url).status_code
+                    show_snippet = snippet_url_status == 200
+                    if snippet_url_status == 404:
+                        print("Warning: page '{}' does not exist".format(snippet_file_url))
+                    if snippet_url_status not in (200, 404):
+                        print("Warning: page '{}' returned error {}".format(snippet_file_url, snippet_url_status))
 
         sb.append(">\n")
         if inline_data["from"] is None and inline_data["to"] is None:
@@ -326,7 +329,7 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
                     snippet_file_url
                 ))
             else:
-                sb.append("> **{}:** [`{}`]()\n".format(
+                sb.append("> **{}:** `{}`\n".format(
                     message_prefix,
                     file_path
                 ))
