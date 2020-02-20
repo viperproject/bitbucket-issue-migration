@@ -82,6 +82,11 @@ def create_parser():
         action="store_true"
     )
     parser.add_argument(
+        "--skip-attachments",
+        help="Skip the migration of attachments (development only!)",
+        action="store_true"
+    )
+    parser.add_argument(
         "bitbucket_repositories",
         nargs="+",
         help="List of the Bitbucket repositories that should migrate to Github"
@@ -186,7 +191,8 @@ def main():
 
     for brepo, grepo in repositories_to_migrate.items():
         step("Migrate issues and pull requests of bitbucket repository '{}' to github".format(brepo))
-        execute("./migrate-discussions.py --github-access-token {} --bitbucket-repository {} --github-repository {}".format(
+        execute("./migrate-discussions.py {} --github-access-token {} --bitbucket-repository {} --github-repository {}".format(
+            "--skip-attachments" if args.skip_attachments else "",
             args.github_access_token,
             brepo,
             grepo

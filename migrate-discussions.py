@@ -8,6 +8,7 @@ from src.bitbucket import BitbucketExport
 from src.github import GithubImport
 from src.map import CommitMap
 import requests
+from urllib.parse import urlparse
 
 
 EXPLICIT_ISSUE_LINK_RE = re.compile(r'https://bitbucket.org/({repos})/issues*/(\d+)[^\s()\[\]{{}}]*'
@@ -290,7 +291,7 @@ def convert_date(bb_date):
     raise RuntimeError("Could not parse date: {}".format(bb_date))
 
 
-def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpull):
+def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport):
     sb = []
     comment_created_on = time_string_to_date_string(bcomment["created_on"])
     sb.append("> " + format_buser_mention(bcomment["user"], capitalize=True) + " commented on " + comment_created_on + "\n")
@@ -299,25 +300,27 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport, bpul
         inline_data = bcomment["inline"]
         file_path = inline_data["path"]
 
-        show_snippet = False
-        message_prefix = "Outdated location"
-        if not inline_data["outdated"]:
+        if inline_data["outdated"]:
+            message_prefix = "Outdated location"
+        else:
             message_prefix = "Location"
-            if bpull["source"]["commit"] is not None:
-                snippet_hg_commit = bpull["source"]["commit"]["hash"]
-                snippet_git_commit = cmap.convert_commit_hash(snippet_hg_commit)
-                if snippet_git_commit is not None:
-                    snippet_file_url = "https://github.com/{}/blob/{}/{}".format(
-                        map_brepo_to_grepo(bexport.get_repo_full_name()),
-                        snippet_git_commit,
-                        file_path
-                    )
-                    snippet_url_status = requests.get(snippet_file_url).status_code
-                    show_snippet = snippet_url_status == 200
-                    if snippet_url_status == 404:
-                        print("Warning: page '{}' does not exist".format(snippet_file_url))
-                    if snippet_url_status not in (200, 404):
-                        print("Warning: page '{}' returned error {}".format(snippet_file_url, snippet_url_status))
+        diff_url = urlparse(bcomment["links"]["code"]["href"])
+        snippet_hg_commit = diff_url.path.split("..")[-1]
+        snippet_git_commit = cmap.convert_commit_hash(snippet_hg_commit)
+        if snippet_git_commit is None:
+            show_snippet = False
+        else:
+            snippet_file_url = "https://github.com/{}/blob/{}/{}".format(
+                map_brepo_to_grepo(bexport.get_repo_full_name()),
+                snippet_git_commit,
+                file_path
+            )
+            snippet_url_status = requests.get(snippet_file_url).status_code
+            show_snippet = snippet_url_status == 200
+            if snippet_url_status == 404:
+                print("Warning: page '{}' does not exist".format(snippet_file_url))
+            if snippet_url_status not in (200, 404):
+                print("Warning: page '{}' returned error {}".format(snippet_file_url, snippet_url_status))
 
         sb.append(">\n")
         if inline_data["from"] is None and inline_data["to"] is None:
@@ -555,7 +558,7 @@ def construct_gcomment_body_for_approval_activity(approval_activity):
     )
 
 
-def construct_gissue_comments(bcomments, cmap, args, bexport, bpull=None):
+def construct_gissue_comments(bcomments, cmap, args, bexport):
     comments = []
 
     for comment_id, bcomment in bcomments.items():
@@ -567,7 +570,7 @@ def construct_gissue_comments(bcomments, cmap, args, bexport, bpull=None):
             continue
         # Construct comment
         comment = {
-            "body": construct_gcomment_body(bcomment, bcomments, cmap, args, bexport, bpull),
+            "body": construct_gcomment_body(bcomment, bcomments, cmap, args, bexport),
             "created_at": convert_date(bcomment["created_on"])
         }
         comments.append(comment)
@@ -694,7 +697,7 @@ def construct_gissue_or_gpull_from_bpull(bpull, bexport, cmap, args):
 
     # Construct comments
     comments = []
-    comments += construct_gissue_comments(bcomments, cmap, args, bexport, bpull)
+    comments += construct_gissue_comments(bcomments, cmap, args, bexport)
     comments += construct_gissue_comments_for_activity(bactivity)
     comments.sort(key=lambda x: x["created_at"])
 
@@ -859,9 +862,9 @@ def bitbucket_to_github(bexport, gimport, cmap, args):
             print("Error: unknown type '{}' for data '{}'".format(type, data))
 
     # Final checks
-    if len(bissues) + len(bpulls) != gimport.get_issues_count():
+    if pulls_id_offset + len(bpulls) != gimport.get_issues_count():
         print("Error: the number of Github issues and pull requests seems to be wrong ({} + {} != {}).".format(
-            len(bissues),
+            pulls_id_offset,
             len(bpulls),
             gimport.get_issues_count()
         ))
@@ -973,13 +976,13 @@ def create_parser():
     )
     parser.add_argument(
         "--skip-attachments",
-        help="Skip the migration of attachments (development only)",
-        action='store_true'
+        help="Skip the migration of attachments (development only!)",
+        action="store_true"
     )
     parser.add_argument(
         "--check",
         help="Check the configuration",
-        action='store_true'
+        action="store_true"
     )
     return parser
 
