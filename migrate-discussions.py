@@ -304,23 +304,23 @@ def construct_gcomment_body(bcomment, bcomments_by_id, cmap, args, bexport):
             message_prefix = "Outdated location"
         else:
             message_prefix = "Location"
-        diff_url = urlparse(bcomment["links"]["code"]["href"])
-        snippet_hg_commit = diff_url.path.split("..")[-1]
-        snippet_git_commit = cmap.convert_commit_hash(snippet_hg_commit)
-        if snippet_git_commit is None:
-            show_snippet = False
-        else:
-            snippet_file_url = "https://github.com/{}/blob/{}/{}".format(
-                map_brepo_to_grepo(bexport.get_repo_full_name()),
-                snippet_git_commit,
-                file_path
-            )
-            snippet_url_status = requests.get(snippet_file_url).status_code
-            show_snippet = snippet_url_status == 200
-            if snippet_url_status == 404:
-                print("Warning: page '{}' does not exist".format(snippet_file_url))
-            if snippet_url_status not in (200, 404):
-                print("Warning: page '{}' returned error {}".format(snippet_file_url, snippet_url_status))
+        show_snippet = False
+        if "code" in bcomment["links"]:
+            diff_url = urlparse(bcomment["links"]["code"]["href"])
+            snippet_hg_commit = diff_url.path.split("..")[-1]
+            snippet_git_commit = cmap.convert_commit_hash(snippet_hg_commit)
+            if snippet_git_commit is not None:
+                snippet_file_url = "https://github.com/{}/blob/{}/{}".format(
+                    map_brepo_to_grepo(bexport.get_repo_full_name()),
+                    snippet_git_commit,
+                    file_path
+                )
+                snippet_url_status = requests.get(snippet_file_url).status_code
+                show_snippet = snippet_url_status == 200
+                if snippet_url_status == 404:
+                    print("Warning: page '{}' does not exist".format(snippet_file_url))
+                if snippet_url_status not in (200, 404):
+                    print("Warning: page '{}' returned error {}".format(snippet_file_url, snippet_url_status))
 
         sb.append(">\n")
         if inline_data["from"] is None and inline_data["to"] is None:
