@@ -789,8 +789,8 @@ def bitbucket_to_github(bexport, gimport, cmap, args):
     bissues = bexport.get_issues()
     bpulls = bexport.get_pulls()
     assert brepo_full_name in config.KNOWN_ISSUES_COUNT_MAPPING
-    assert config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name] == len(bissues), len(bissues)
-    pulls_id_offset = len(bissues)
+    assert config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name] >= len(bissues), len(bissues)
+    pulls_id_offset = config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name]
 
     # Migrate attachments
     if not args.skip_attachments:
@@ -895,13 +895,13 @@ def check(bexport, gimport, args):
     if brepo_full_name not in config.KNOWN_REPO_MAPPING:
         print("Error: bitbucket repository '{}' is not configured in KNOWN_REPO_MAPPING.".format(brepo_full_name))
 
-    if config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name] != len(bissues):
+    if config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name] < len(bissues):
         print("Error: bitbucket repository '{}' in KNOWN_ISSUES_COUNT_MAPPING maps to '{}', but the actual number of issues is '{}'.".format(
             brepo_full_name,
             config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name],
             len(bissues)
         ))
-    if config.KNOWN_REPO_MAPPING[brepo_full_name] != grepo_full_name:
+    if config.KNOWN_REPO_MAPPING[brepo_full_name] < grepo_full_name:
         print("Error: bitbucket repository '{}' in KNOWN_REPO_MAPPING maps to '{}', but the github repository passed by command line is '{}'.".format(
             brepo_full_name,
             config.KNOWN_REPO_MAPPING[brepo_full_name],
