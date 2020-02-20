@@ -13,6 +13,7 @@ class GithubImport:
             enable_console_debug_logging()
         self.access_token = access_token
         retry = Retry(
+            total=30,
             connect=5,
             read=5,
             backoff_factor=0.5,
