@@ -10,7 +10,6 @@
     --hg-fast-export-path=<path to hg-fast-export.sh> \
     --hg-authors-map=migration_data/authors.map \
     --hg-branches-map=migration_data/branches.map \
-    --bitbucket-username=<bitbucket username> \
     [space separated list of bitbucket repositories to migrate]
 ```
 

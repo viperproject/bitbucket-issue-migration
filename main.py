@@ -7,7 +7,7 @@ import pathlib
 from send2trash import send2trash
 from github import Github
 from github.GithubException import GithubException
-from getpass import getpass
+#from getpass import getpass
 import datetime
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -118,8 +118,8 @@ def main():
         print("Error: The branch mapping file '{}' does not exist. Please create it.".format(args.hg_branches_map))
         input("Press Enter to retry...")
 
-    if args.bitbucket_password is None:
-        args.bitbucket_password = getpass(prompt="Password of Bitbucket's user '{}': ".format(args.bitbucket_username))
+    #if args.bitbucket_password is None:
+    #    args.bitbucket_password = getpass(prompt="Password of Bitbucket's user '{}': ".format(args.bitbucket_username))
 
     if not args.skip_stuff:
         for brepo, grepo in repositories_to_migrate.items():
@@ -134,11 +134,11 @@ def main():
         for brepo, grepo in repositories_to_migrate.items():
             hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
             step("Importing forks of bitbucket repository '{}' into local mercurial repository".format(brepo))
-            execute("./import-forks.py --verbose --repo {} --bitbucket-repository {} --bitbucket-username {} --bitbucket-password {}".format(
+            execute("./import-forks.py --verbose --repo {} --bitbucket-repository {} {}{}".format(
                 hg_folder,
                 brepo,
-                args.bitbucket_username,
-                args.bitbucket_password
+                "--bitbucket-username {} ".format(args.bitbucket_username) if args.bitbucket_username is not None else "",
+                "--bitbucket-password {} ".format(args.bitbucket_password) if args.bitbucket_password is not None else "",
             ), cwd=ROOT)
 
         for brepo, grepo in repositories_to_migrate.items():
