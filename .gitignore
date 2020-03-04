@@ -4,3 +4,5 @@ __pycache__/
 *.py[cod]
 /migration_data/*
 !/migration_data/.gitkeep
+!/migration_data/*.map
+!/migration_data/*_cmap.txt
