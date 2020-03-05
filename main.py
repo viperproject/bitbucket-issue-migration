@@ -69,8 +69,7 @@ def create_parser():
     )
     parser.add_argument(
         "--bitbucket-username",
-        help="Bitbucket username",
-        required=True
+        help="Bitbucket username"
     )
     parser.add_argument(
         "--bitbucket-password",
