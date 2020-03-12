@@ -113,6 +113,7 @@ KNOWN_REPO_MAPPING = {
     "viperproject/carbon": "viperproject/carbon",
     "viperproject/silicon": "viperproject/silicon",
     "viperproject/viperserver": "viperproject/viperserver",
+    "viperproject/examples": "viperproject/examples",
 }
 
 # Mapping of known Bitbucket repos to their number of issues.
@@ -123,6 +124,7 @@ KNOWN_ISSUES_COUNT_MAPPING = {
     "viperproject/carbon": 296,
     "viperproject/silicon": 410,
     "viperproject/viperserver": 0,
+    "viperproject/examples": 0,
 }
 
 KNOWN_CMAP_PATHS = {
@@ -130,4 +132,5 @@ KNOWN_CMAP_PATHS = {
     "viperproject/carbon": "migration_data/carbon_cmap.txt",
     "viperproject/silicon": "migration_data/silicon_cmap.txt",
     "viperproject/viperserver": "migration_data/viperserver_cmap.txt",
+    "viperproject/examples": "migration_data/examples_cmap.txt",
 }
