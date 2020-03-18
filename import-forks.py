@@ -7,7 +7,7 @@ from src.bitbucket import BitbucketExport
 
 
 def get_bitbucket_base_url():
-    return "ssh://hg@bitbucket.org/"
+    return "https://hg@bitbucket.org/"
 
 
 class ForkCommit:

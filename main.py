@@ -15,7 +15,7 @@ MIGRATION_DATA_DIR = os.path.join(ROOT, "migration_data")
 
 
 def bitbucket_repo_url(repo):
-    return "ssh://hg@bitbucket.org/" + repo
+    return "https://hg@bitbucket.org/" + repo
 
 
 def github_repo_url(repo):
@@ -46,6 +46,11 @@ def create_parser():
     parser = argparse.ArgumentParser(
         prog="migrate",
         description="Migrate mercurial repositories from Bitbucket to Github"
+    )
+    parser.add_argument(
+        "--github-username",
+        help="GitHub username",
+        required=True
     )
     parser.add_argument(
         "-t", "--github-access-token",
@@ -182,8 +187,10 @@ def main():
             input("Press Enter to retry...")
 
     for brepo, grepo in repositories_to_migrate.items():
-        step("Pushing local git repository to github repository '{}'".format(grepo))
+        step("Converting local git repository to HTTPS: '{}'".format(grepo))
         git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
+        execute("git remote set-url origin https://{}:{}@github.com/{}.git".format(args.github_username, args.github_access_token, grepo), cwd=git_folder)
+        step("Pushing local git repository to github repository '{}'".format(grepo))
         execute("git push --set-upstream origin master", cwd=git_folder)
         execute("git push --all origin", cwd=git_folder)
         execute("git push --tags origin", cwd=git_folder)
