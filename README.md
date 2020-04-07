@@ -1,8 +1,10 @@
 # Bitbucket To Github Migration
 
+* Create a GitHub repository with the same name (URL) of the original repository in BitBucket.
+* Copy the description of the repository.
 * Set the `USER_MAPPING`, `KNOWN_REPO_MAPPING`, `KNOWN_ISSUES_COUNT_MAPPING`, and `KNOWN_CMAP_PATHS` variables in `config.py`.
 * Inspect Mercurial authors with `hg log --template "{author}\n"` and add entries to `migration_data/authors.map`.
-* Run the main migration script:
+* Run the main migration script and observe for errors:
 
 ```
 ./main.py \
@@ -12,6 +14,13 @@
     --hg-branches-map=migration_data/branches.map \
     [space separated list of bitbucket repositories to migrate]
 ```
+
+* Copy Wiki by hand from the original repository.
+* Change the description of the original repository (BitBucket) to the following:
+  * IMPORTANT: the official repository is now at https://github.com/viperproject/...
+* Prevent commits in the original repository by changing its settings (BitBucket):
+  * All users except for 'admin' should have 'read' permission only.
+* Adapt the corresponding Jenkins jobs accordingly.
 
 Alternative manual steps:
 * Clone your mercurial repos
