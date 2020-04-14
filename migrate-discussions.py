@@ -977,6 +977,16 @@ def create_parser():
         required=True
     )
     parser.add_argument(
+        "--bitbucket-username",
+        help="BitBucket username with access to repository.",
+        required=True
+    )
+    parser.add_argument(
+        "--bitbucket-password",
+        help="BitBucket password.",
+        required=True
+    )
+    parser.add_argument(
         "--skip-attachments",
         help="Skip the migration of attachments (development only!)",
         action="store_true"
@@ -992,7 +1002,7 @@ def create_parser():
 def main():
     parser = create_parser()
     args = parser.parse_args()
-    bexport = BitbucketExport(args.bitbucket_repository)
+    bexport = BitbucketExport(args.bitbucket_repository, args.bitbucket_username, args.bitbucket_password)
     gimport = GithubImport(args.github_access_token, args.github_repository, debug=False)
     cmap = CommitMap()
     print("Load mapping of mercurial commits to git...")

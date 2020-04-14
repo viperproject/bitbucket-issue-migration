@@ -14,8 +14,8 @@ ROOT = os.path.abspath(os.path.dirname(__file__))
 MIGRATION_DATA_DIR = os.path.join(ROOT, "migration_data")
 
 
-def bitbucket_repo_url(repo):
-    return "https://hg@bitbucket.org/" + repo
+def bitbucket_repo_url(repo, username, password):
+    return "https://" + username + ":" + password + "@bitbucket.org/" + repo
 
 
 def github_repo_url(repo):
@@ -129,7 +129,7 @@ def main():
         for brepo, grepo in repositories_to_migrate.items():
             step("Cloning bitbucket repository '{}' to local mercurial repository".format(brepo))
             hg_folder = os.path.join(MIGRATION_DATA_DIR, "bitbucket", brepo)
-            brepo_url = bitbucket_repo_url(brepo)
+            brepo_url = bitbucket_repo_url(brepo, args.bitbucket_username, args.bitbucket_password)
             if os.path.isdir(hg_folder):
                 send2trash(hg_folder)
             pathlib.Path(hg_folder).mkdir(parents=True, exist_ok=True)
@@ -197,11 +197,13 @@ def main():
 
     for brepo, grepo in repositories_to_migrate.items():
         step("Migrate issues and pull requests of bitbucket repository '{}' to github".format(brepo))
-        execute("./migrate-discussions.py {} --github-access-token {} --bitbucket-repository {} --github-repository {}".format(
+        execute("./migrate-discussions.py {} --github-access-token {} --bitbucket-repository {} --github-repository {} --bitbucket-username {} --bitbucket-password {}".format(
             "--skip-attachments" if args.skip_attachments else "",
             args.github_access_token,
             brepo,
-            grepo
+            grepo,
+            args.bitbucket_username,
+            args.bitbucket_password
         ), cwd=ROOT)
 
 
