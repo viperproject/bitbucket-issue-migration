@@ -146,6 +146,7 @@ KNOWN_REPO_MAPPING = {
     "viperproject/ychalice":"viperproject/ychalice",
     "viperproject/ychaliceobligations": "viperproject/ychaliceobligations",
     "viperproject/obligations-chalice2silver": "viperproject/obligations-chalice2silver",
+    "viperproject/obligations-silicon": "viperproject/obligations-silicon",
 }
 
 # Mapping of known Bitbucket repos to their number of issues.
@@ -189,6 +190,7 @@ KNOWN_ISSUES_COUNT_MAPPING = {
     "viperproject/ychalice": 0,
     "viperproject/ychaliceobligations": 0,
     "viperproject/obligations-chalice2silver": 0,
+    "viperproject/obligations-silicon": 0,
 }
 
 KNOWN_CMAP_PATHS = {
@@ -229,4 +231,5 @@ KNOWN_CMAP_PATHS = {
     "viperproject/ychalice": "migration_data/ychalice_cmap.txt",
     "viperproject/ychaliceobligations": "migration_data/ychaliceobligations_cmap.txt",
     "viperproject/obligations-chalice2silver": "migration_data/obligations-chalice2silver_cmap.txt",
+    "viperproject/obligations-silicon": "migration_data/obligations-silicon_cmap.txt", 
 }

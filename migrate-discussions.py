@@ -791,7 +791,10 @@ def bitbucket_to_github(bexport, gimport, cmap, args):
     attachment_gist_by_issue_id = {}
 
     # Retrieve data
-    bissues = bexport.get_issues()
+    try:
+        bissues = bexport.get_issues()
+    except:
+        bissues = []
     bpulls = bexport.get_pulls()
     assert brepo_full_name in config.KNOWN_ISSUES_COUNT_MAPPING
     assert config.KNOWN_ISSUES_COUNT_MAPPING[brepo_full_name] >= len(bissues), len(bissues)
