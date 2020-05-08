@@ -6,8 +6,11 @@ from src.repo import HgRepo
 from src.bitbucket import BitbucketExport
 
 
-def get_bitbucket_base_url():
-    return "https://hg@bitbucket.org/"
+def get_bitbucket_base_url(args):
+    if args.bitbucket_username is not None and args.bitbucket_password is not None:
+        return "https://{}:{}@bitbucket.org/".format(args.bitbucket_username, args.bitbucket_password)
+    else:
+        return "https://hg@bitbucket.org/"
 
 
 class ForkCommit:
@@ -55,7 +58,8 @@ def get_fork_commits(bexport, args):
 
 
 def import_fork_commit(repo, fork_commit, args):
-    fork_url = get_bitbucket_base_url() + fork_commit.fork
+    fork_url = get_bitbucket_base_url(args) + fork_commit.fork
+    print("Debug: fork_url = " + fork_url)
     if args.verbose:
         print("pull -r {} {}".format(fork_commit.rev_hash, fork_url))
     repo.hg_command("pull", "-r", fork_commit.rev_hash, fork_url)

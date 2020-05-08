@@ -564,18 +564,21 @@ def construct_gissue_comments(bcomments, cmap, args, bexport):
     comments = []
 
     for comment_id, bcomment in bcomments.items():
-        # Skip empty comments
-        if bcomment["content"]["raw"] is None:
-            continue
-        # Skip deleted comments
-        if "deleted" in bcomment and bcomment["deleted"]:
-            continue
-        # Construct comment
-        comment = {
-            "body": construct_gcomment_body(bcomment, bcomments, cmap, args, bexport),
-            "created_at": convert_date(bcomment["created_on"])
-        }
-        comments.append(comment)
+        try:
+            # Skip empty comments
+            if bcomment["content"]["raw"] is None:
+                continue
+            # Skip deleted comments
+            if "deleted" in bcomment and bcomment["deleted"]:
+                continue
+            # Construct comment
+            comment = {
+                "body": construct_gcomment_body(bcomment, bcomments, cmap, args, bexport),
+                "created_at": convert_date(bcomment["created_on"])
+            }
+            comments.append(comment)
+        except:
+            print("Failed to get comment id {}".format(comment_id))
 
     comments.sort(key=lambda x: x["created_at"])
     return comments
