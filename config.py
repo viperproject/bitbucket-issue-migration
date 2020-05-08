@@ -160,6 +160,11 @@ KNOWN_REPO_MAPPING = {
     "viperproject/viperonline-server": "viperproject/viperonline-server",
     "viperproject/viperonline-tool-hoster": "viperproject/viperonline-tool-hoster",
     "viperproject/viperonline-tutorial-generator": "viperproject/viperonline-tutorial-generator",
+    "viperproject/voila": "viperproject/voila",
+    "viperproject/silicon-assertable": "viperproject/silicon-assertable",
+    "viperproject/silver-assertable": "viperproject/silver-assertable",
+    "viperproject/silver-coarse": "viperproject/silver-coarse",
+    "viperproject/silicon-coarse": "viperproject/silicon-coarse",
 }
 
 # Mapping of known Bitbucket repos to their number of issues.
@@ -217,6 +222,11 @@ KNOWN_ISSUES_COUNT_MAPPING = {
     "viperproject/viperonline-server": 0,
     "viperproject/viperonline-tool-hoster": 0,
     "viperproject/viperonline-tutorial-generator": 0,
+    "viperproject/voila": 107,
+    "viperproject/silicon-assertable": 0,
+    "viperproject/silver-assertable": 0,
+    "viperproject/silver-coarse": 0,
+    "viperproject/silicon-coarse": 0,
 }
 
 KNOWN_CMAP_PATHS = {
@@ -271,4 +281,9 @@ KNOWN_CMAP_PATHS = {
     "viperproject/viperonline-server": "migration_data/viperonline-server_cmap.txt",
     "viperproject/viperonline-tool-hoster": "migration_data/viperonline-tool-hoster_cmap.txt",
     "viperproject/viperonline-tutorial-generator": "migration_data/viperonline-tutorial-generator_cmap.txt",
+    "viperproject/voila": "migration_data/voila_cmap.txt",
+    "viperproject/silicon-assertable": "migration_data/silicon-assertable_cmap.txt",
+    "viperproject/silver-assertable": "migration_data/silver-assertable_cmap.txt",
+    "viperproject/silver-coarse": "migration_data/silver-coarse_cmap.txt",
+    "viperproject/silicon-coarse": "migration_data/silicon-coarse_cmap.txt",
 }
