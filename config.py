@@ -165,6 +165,11 @@ KNOWN_REPO_MAPPING = {
     "viperproject/silver-assertable": "viperproject/silver-assertable",
     "viperproject/silver-coarse": "viperproject/silver-coarse",
     "viperproject/silicon-coarse": "viperproject/silicon-coarse",
+    "viperproject/silicon-verifiedif": "viperproject/silicon-verifiedif",
+    "viperproject/silver-attributes": "viperproject/silver-attributes",
+    "viperproject/silver-verifiedif": "viperproject/silver-verifiedif",
+    "viperproject/obligations-silver": "viperproject/obligations-silver",
+    "viperproject/sample_qp": "viperproject/sample_qp",
 }
 
 # Mapping of known Bitbucket repos to their number of issues.
@@ -227,6 +232,11 @@ KNOWN_ISSUES_COUNT_MAPPING = {
     "viperproject/silver-assertable": 0,
     "viperproject/silver-coarse": 0,
     "viperproject/silicon-coarse": 0,
+    "viperproject/silicon-verifiedif": 0,
+    "viperproject/silver-attributes": 0,
+    "viperproject/silver-verifiedif": 0,
+    "viperproject/obligations-silver": 0,
+    "viperproject/sample_qp": 0,
 }
 
 KNOWN_CMAP_PATHS = {
@@ -286,4 +296,9 @@ KNOWN_CMAP_PATHS = {
     "viperproject/silver-assertable": "migration_data/silver-assertable_cmap.txt",
     "viperproject/silver-coarse": "migration_data/silver-coarse_cmap.txt",
     "viperproject/silicon-coarse": "migration_data/silicon-coarse_cmap.txt",
+    "viperproject/silicon-verifiedif": "migration_data/silicon-verifiedif_cmap.txt",
+    "viperproject/silver-attributes": "migration_data/silver-attributes_cmap.txt",
+    "viperproject/silver-verifiedif": "migration_data/silver-verifiedif_cmap.txt",
+    "viperproject/obligations-silver": "migration_data/obligations-silver_cmap.txt",
+    "viperproject/sample_qp": "migration_data/sample_qp_cmap.txt",
 }

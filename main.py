@@ -58,6 +58,10 @@ def create_parser():
         required=True
     )
     parser.add_argument(
+        "--git-lfs",
+        help="Extension of files that should be stored in Git LFS"
+    )
+    parser.add_argument(
         "--hg-fast-export-path",
         help="Path to the hg-fast-export.sh script",
         required=True
@@ -153,6 +157,9 @@ def main():
             pathlib.Path(git_folder).mkdir(parents=True, exist_ok=True)
             execute("git init", cwd=git_folder)
             execute("git config core.ignoreCase false", cwd=git_folder)
+            if args.git_lfs is not None:
+                execute('git lfs track "*.{}"'.format(args.git_lfs), cwd=git_folder)
+                execute('git add .gitattributes', cwd=git_folder)
 
         for brepo, grepo in repositories_to_migrate.items():
             step("Converting local mercurial repository of '{}' to git".format(brepo))
@@ -190,6 +197,9 @@ def main():
         step("Converting local git repository to HTTPS: '{}'".format(grepo))
         git_folder = os.path.join(MIGRATION_DATA_DIR, "github", grepo)
         execute("git remote set-url origin https://{}:{}@github.com/{}.git".format(args.github_username, args.github_access_token, grepo), cwd=git_folder)
+        if args.git_lfs is not None:
+            step("Converting '{}' files to Git LFS in repository '{}'".format(args.git_lfs, grepo))
+            execute("git lfs migrate import --everything --yes", cwd=git_folder)
         step("Pushing local git repository to github repository '{}'".format(grepo))
         execute("git push --set-upstream origin master", cwd=git_folder)
         execute("git push --all origin", cwd=git_folder)
