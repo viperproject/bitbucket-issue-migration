@@ -865,7 +865,10 @@ def bitbucket_to_github(bexport, gimport, cmap, args):
                 gimport.update_issue_with_comments(existing_gpulls[pull_number], data)
             else:
                 print("Create github pull request #{}...".format(number))
-                gimport.create_pull_with_comments(data)
+                try:
+                    gimport.create_pull_with_comments(data)
+                except:
+                    print("Failed to process pull request #{}".format(number))
         else:
             print("Error: unknown type '{}' for data '{}'".format(type, data))
 

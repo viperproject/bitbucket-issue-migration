@@ -170,6 +170,7 @@ KNOWN_REPO_MAPPING = {
     "viperproject/silver-verifiedif": "viperproject/silver-verifiedif",
     "viperproject/obligations-silver": "viperproject/obligations-silver",
     "viperproject/sample_qp": "viperproject/sample_qp",
+    "viperproject/sample_qp2": "viperproject/sample_qp2",
 }
 
 # Mapping of known Bitbucket repos to their number of issues.
@@ -237,6 +238,7 @@ KNOWN_ISSUES_COUNT_MAPPING = {
     "viperproject/silver-verifiedif": 0,
     "viperproject/obligations-silver": 0,
     "viperproject/sample_qp": 0,
+    "viperproject/sample_qp2": 0,
 }
 
 KNOWN_CMAP_PATHS = {
@@ -301,4 +303,5 @@ KNOWN_CMAP_PATHS = {
     "viperproject/silver-verifiedif": "migration_data/silver-verifiedif_cmap.txt",
     "viperproject/obligations-silver": "migration_data/obligations-silver_cmap.txt",
     "viperproject/sample_qp": "migration_data/sample_qp_cmap.txt",
+    "viperproject/sample_qp2": "migration_data/sample_qp2_cmap.txt",
 }
