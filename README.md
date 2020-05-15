@@ -1,5 +1,7 @@
 # Bitbucket To Github Migration
 
+Warning: use at your own risk, comes with no warranty or liability of any kind. 
+
 * Create a GitHub repository with the same name (URL) of the original repository in BitBucket.
 * Copy the description of the repository.
 * Set the `USER_MAPPING`, `KNOWN_REPO_MAPPING`, `KNOWN_ISSUES_COUNT_MAPPING`, and `KNOWN_CMAP_PATHS` variables in `config.py`.
