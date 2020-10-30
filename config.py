@@ -45,6 +45,8 @@ USER_MAPPING = {
     "alexander_summers": "alexanderjsummers",
     "{19f8d68f-a7da-4d75-a765-0393770be2de}": "alexanderjsummers",
     "{557058:978738dd-952f-4b9f-8e6f-7982e018475b}": "alexanderjsummers",
+    "walkersilas": "walkersilas",
+    "wytseoortwijn": "wytseoortwijn",
 }
 
 # We map bitbucket's issue "kind" to github "labels".
@@ -169,6 +171,7 @@ KNOWN_REPO_MAPPING = {
     "viperproject/silver-attributes": "viperproject/silver-attributes",
     "viperproject/silver-verifiedif": "viperproject/silver-verifiedif",
     "viperproject/obligations-silver": "viperproject/obligations-silver",
+    "Felale/gobra-one": "viperproject/gobra",
 }
 
 # Mapping of known Bitbucket repos to their number of issues.
@@ -235,6 +238,7 @@ KNOWN_ISSUES_COUNT_MAPPING = {
     "viperproject/silver-attributes": 0,
     "viperproject/silver-verifiedif": 0,
     "viperproject/obligations-silver": 0,
+    "Felale/gobra-one": 46,
 }
 
 KNOWN_CMAP_PATHS = {
@@ -275,8 +279,8 @@ KNOWN_CMAP_PATHS = {
     "viperproject/ychalice": "migration_data/ychalice_cmap.txt",
     "viperproject/ychaliceobligations": "migration_data/ychaliceobligations_cmap.txt",
     "viperproject/obligations-chalice2silver": "migration_data/obligations-chalice2silver_cmap.txt",
-    "viperproject/obligations-silicon": "migration_data/obligations-silicon_cmap.txt", 
-    "viperproject/obligations-silver": "migration_data/obligations-silver_cmap.txt", 
+    "viperproject/obligations-silicon": "migration_data/obligations-silicon_cmap.txt",
+    "viperproject/obligations-silver": "migration_data/obligations-silver_cmap.txt",
     "viperproject/cc4s-contracts": "migration_data/cc4s-contracts_cmap.txt",
     "viperproject/cc4s-rewriter": "migration_data/cc4s-rewriter_cmap.txt",
     "viperproject/dafny-ide": "migration_data/dafny-ide_cmap.txt",
@@ -297,5 +301,5 @@ KNOWN_CMAP_PATHS = {
     "viperproject/silicon-verifiedif": "migration_data/silicon-verifiedif_cmap.txt",
     "viperproject/silver-attributes": "migration_data/silver-attributes_cmap.txt",
     "viperproject/silver-verifiedif": "migration_data/silver-verifiedif_cmap.txt",
-    "viperproject/obligations-silver": "migration_data/obligations-silver_cmap.txt",
+    "Felale/gobra-one": "migration_data/gobra_cmap.txt",
 }

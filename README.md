@@ -1,6 +1,13 @@
 # Bitbucket To Github Migration
 
-Warning: use at your own risk, comes with no warranty or liability of any kind. 
+Warning: use at your own risk, comes with no warranty or liability of any kind.
+
+Although the scripts in this repository are mainly targeted at migrating a Bitbucket Mercurial repo to GitHub (using git), [this section](#git-on-Bitbucket-to-git-on-GitHub-Migration) describes migrating a git repository from Bitbucket to GitHub.
+
+The GitHub access token has to have at least the following privileges: gist, repo, write:discussion.
+
+
+## Mercurial on Bitbucket to git on GitHub Migration
 
 * Create a GitHub repository with the same name (URL) of the original repository in BitBucket.
 * Copy the description of the repository.
@@ -62,3 +69,13 @@ Within a comment:
 ## Install dependencies
 
 `pip3 install -r requirements.pip`
+
+
+## git on Bitbucket to git on GitHub Migration
+* Clone Bitbucket repo: `git clone --mirror URL_TO_BITBUCKET_REPO`
+* cd into cloned repo
+* Push to GitHub: `git push --mirror URL_TO_GITHUB_REPO`
+* Create a mapping of git commits to themselves: `git log --all --format='%H,%H' > cmap.txt`
+* Adapt `config.py` to correctly capture the Bitbucket repos, their GitHub correspondance, and the number of issues
+* Run `python3 migrate-discussions.py --github-access-token <GitHub access token> --bitbucket-repository <e.g. viperproject/silver> --github-repository <e.g. viperproject/silver>` to migrate the issues and pull requests (again for all repositories)
+
