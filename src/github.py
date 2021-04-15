@@ -58,7 +58,7 @@ class GithubImport:
         gist = self.get_gist_by_description(gist_data["description"])
         if gist is None:
             gist = self.github.get_user().create_gist(
-                True,
+                False,
                 gist_data["files"],
                 gist_data["description"]
             )
