@@ -95,4 +95,4 @@ class BitbucketExport:
         return activity
 
     def get_detailed_comment(self, shallow_comment):
-        return get_request_json(shallow_comment["links"]["self"]["href"])
+        return get_request_json(shallow_comment["links"]["self"]["href"], self.session)
