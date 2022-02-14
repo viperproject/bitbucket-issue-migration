@@ -116,7 +116,7 @@ class GithubImport:
         # Delete comments in excess
         comments_to_delete = existing_comments[num_comments:]
         for i, gcomment in enumerate(comments_to_delete):
-            print("Delete extra gituhb comment {}/{} of issue #{}...".format(i + 1, len(comments_to_delete), issue_id))
+            print("Delete extra github comment {}/{} of issue #{}...".format(i + 1, len(comments_to_delete), issue_id))
             gcomment.delete()
 
     def update_issue_with_comments(self, issue, issue_data):
@@ -158,7 +158,7 @@ class GithubImport:
         # Delete comments in excess
         comments_to_delete = existing_comments[num_comments:]
         for i, gcomment in enumerate(comments_to_delete):
-            print("Delete extra gituhb comment {}/{} of pull request #{}...".format(i + 1, len(comments_to_delete), pull_id))
+            print("Delete extra github comment {}/{} of pull request #{}...".format(i + 1, len(comments_to_delete), pull_id))
             gcomment.delete()
 
     def update_pull_with_comments(self, pull, pull_data):
