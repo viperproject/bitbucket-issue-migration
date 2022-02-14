@@ -492,7 +492,7 @@ def construct_gpull_request_body(bpull, bexport, cmap, args):
         merge_bhash = bpull["merge_commit"]["hash"]
         merge_grepo = map_brepo_to_grepo(merge_brepo)
         merge_ghash = cmap.convert_commit_hash(merge_bhash)
-        sb.append("> Marge commit: https://github.com/{grepo}/commit/{ghash}\n".format(
+        sb.append("> Merge commit: https://github.com/{grepo}/commit/{ghash}\n".format(
             grepo=merge_grepo,
             ghash=merge_ghash
         ))
